@@ -11,6 +11,7 @@ import {
 } from '../utils/defaultData';
 
 const AppContext = createContext();
+const API_BASE_URL = 'http://localhost:5000/api';
 
 export const useApp = () => {
   const context = useContext(AppContext);
@@ -70,6 +71,53 @@ export const AppProvider = ({ children }) => {
   // Active View Tab: 'ledger' | 'sound' | 'members'
   const [activeTab, setActiveTab] = useState('ledger');
 
+  // Fetch initial data from Backend Server if available
+  useEffect(() => {
+    const fetchBackendData = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/data`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.events) setEvents(data.events);
+          if (data.chandaList) setChandaList(data.chandaList);
+          if (data.expenseList) setExpenseList(data.expenseList);
+          if (data.custodyList) setCustodyList(data.custodyList);
+          if (data.soundInventory) setSoundInventory(data.soundInventory);
+          if (data.soundRentals) setSoundRentals(data.soundRentals);
+          if (data.members) setMembers(data.members);
+          if (data.adminPin) setAdminPin(data.adminPin);
+        }
+      } catch (err) {
+        // Backend server offline, fallback to LocalStorage seamlessly
+      }
+    };
+    fetchBackendData();
+  }, []);
+
+  // Sync to Backend Server whenever state updates
+  const syncToBackend = async (overrideState = {}) => {
+    try {
+      const payload = {
+        adminPin,
+        events,
+        chandaList,
+        expenseList,
+        custodyList,
+        soundInventory,
+        soundRentals,
+        members,
+        ...overrideState,
+      };
+      await fetch(`${API_BASE_URL}/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      // Ignore if offline
+    }
+  };
+
   // Verify PIN & Unlock
   const unlockAdmin = (inputPin) => {
     if (inputPin === adminPin) {
@@ -91,6 +139,7 @@ export const AppProvider = ({ children }) => {
       return { success: false, message: 'नया पासवर्ड कम से कम 4 अंकों का होना चाहिए!' };
     }
     setAdminPin(newPin);
+    syncToBackend({ adminPin: newPin });
     return { success: true, message: 'पासवर्ड सफलतापूर्वक बदल दिया गया है!' };
   };
 
@@ -101,23 +150,36 @@ export const AppProvider = ({ children }) => {
       id: `evt-${Date.now()}`,
       status: newEvent.status || 'active',
     };
-    setEvents((prev) => [eventObj, ...prev]);
+    const updated = [eventObj, ...events];
+    setEvents(updated);
     setSelectedEventId(eventObj.id);
+    syncToBackend({ events: updated });
   };
 
   const updateEvent = (id, updatedFields) => {
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...updatedFields } : e)));
+    const updated = events.map((e) => (e.id === id ? { ...e, ...updatedFields } : e));
+    setEvents(updated);
+    syncToBackend({ events: updated });
   };
 
   const deleteEvent = (id) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
-    setChandaList((prev) => prev.filter((c) => c.eventId !== id));
-    setExpenseList((prev) => prev.filter((ex) => ex.eventId !== id));
-    setCustodyList((prev) => prev.filter((cu) => cu.eventId !== id));
+    const updatedEvts = events.filter((e) => e.id !== id);
+    const updatedChanda = chandaList.filter((c) => c.eventId !== id);
+    const updatedExpenses = expenseList.filter((ex) => ex.eventId !== id);
+    const updatedCustody = custodyList.filter((cu) => cu.eventId !== id);
+    setEvents(updatedEvts);
+    setChandaList(updatedChanda);
+    setExpenseList(updatedExpenses);
+    setCustodyList(updatedCustody);
     if (selectedEventId === id) {
-      const remaining = events.filter((e) => e.id !== id);
-      setSelectedEventId(remaining[0]?.id || '');
+      setSelectedEventId(updatedEvts[0]?.id || '');
     }
+    syncToBackend({
+      events: updatedEvts,
+      chandaList: updatedChanda,
+      expenseList: updatedExpenses,
+      custodyList: updatedCustody,
+    });
   };
 
   // Chanda Handlers
@@ -130,17 +192,23 @@ export const AppProvider = ({ children }) => {
       date: newChanda.date || new Date().toISOString().split('T')[0],
       amount: Number(newChanda.amount) || 0,
     };
-    setChandaList((prev) => [chandaObj, ...prev]);
+    const updated = [chandaObj, ...chandaList];
+    setChandaList(updated);
+    syncToBackend({ chandaList: updated });
   };
 
   const updateChanda = (id, updatedFields) => {
-    setChandaList((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updatedFields, amount: Number(updatedFields.amount || c.amount) } : c))
+    const updated = chandaList.map((c) =>
+      c.id === id ? { ...c, ...updatedFields, amount: Number(updatedFields.amount || c.amount) } : c
     );
+    setChandaList(updated);
+    syncToBackend({ chandaList: updated });
   };
 
   const deleteChanda = (id) => {
-    setChandaList((prev) => prev.filter((c) => c.id !== id));
+    const updated = chandaList.filter((c) => c.id !== id);
+    setChandaList(updated);
+    syncToBackend({ chandaList: updated });
   };
 
   // Expense Handlers
@@ -151,17 +219,23 @@ export const AppProvider = ({ children }) => {
       date: newExpense.date || new Date().toISOString().split('T')[0],
       amount: Number(newExpense.amount) || 0,
     };
-    setExpenseList((prev) => [expObj, ...prev]);
+    const updated = [expObj, ...expenseList];
+    setExpenseList(updated);
+    syncToBackend({ expenseList: updated });
   };
 
   const updateExpense = (id, updatedFields) => {
-    setExpenseList((prev) =>
-      prev.map((ex) => (ex.id === id ? { ...ex, ...updatedFields, amount: Number(updatedFields.amount || ex.amount) } : ex))
+    const updated = expenseList.map((ex) =>
+      ex.id === id ? { ...ex, ...updatedFields, amount: Number(updatedFields.amount || ex.amount) } : ex
     );
+    setExpenseList(updated);
+    syncToBackend({ expenseList: updated });
   };
 
   const deleteExpense = (id) => {
-    setExpenseList((prev) => prev.filter((ex) => ex.id !== id));
+    const updated = expenseList.filter((ex) => ex.id !== id);
+    setExpenseList(updated);
+    syncToBackend({ expenseList: updated });
   };
 
   // Custody Handlers
@@ -173,15 +247,21 @@ export const AppProvider = ({ children }) => {
       amount: Number(newCustody.amount) || 0,
       status: newCustody.status || 'held',
     };
-    setCustodyList((prev) => [custObj, ...prev]);
+    const updated = [custObj, ...custodyList];
+    setCustodyList(updated);
+    syncToBackend({ custodyList: updated });
   };
 
   const updateCustody = (id, updatedFields) => {
-    setCustodyList((prev) => prev.map((cu) => (cu.id === id ? { ...cu, ...updatedFields } : cu)));
+    const updated = custodyList.map((cu) => (cu.id === id ? { ...cu, ...updatedFields } : cu));
+    setCustodyList(updated);
+    syncToBackend({ custodyList: updated });
   };
 
   const deleteCustody = (id) => {
-    setCustodyList((prev) => prev.filter((cu) => cu.id !== id));
+    const updated = custodyList.filter((cu) => cu.id !== id);
+    setCustodyList(updated);
+    syncToBackend({ custodyList: updated });
   };
 
   // Sound System Rental Handlers
@@ -194,57 +274,69 @@ export const AppProvider = ({ children }) => {
       advancePaid: Number(newRental.advancePaid) || 0,
       status: newRental.status || 'active',
     };
-    setSoundRentals((prev) => [rentalObj, ...prev]);
+    const updated = [rentalObj, ...soundRentals];
+    setSoundRentals(updated);
+    syncToBackend({ soundRentals: updated });
   };
 
   const updateRental = (id, updatedFields) => {
-    setSoundRentals((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...updatedFields } : r))
-    );
+    const updated = soundRentals.map((r) => (r.id === id ? { ...r, ...updatedFields } : r));
+    setSoundRentals(updated);
+    syncToBackend({ soundRentals: updated });
   };
 
   const deleteRental = (id) => {
-    setSoundRentals((prev) => prev.filter((r) => r.id !== id));
+    const updated = soundRentals.filter((r) => r.id !== id);
+    setSoundRentals(updated);
+    syncToBackend({ soundRentals: updated });
   };
 
   const toggleRentalStatus = (id) => {
-    setSoundRentals((prev) =>
-      prev.map((r) =>
-        r.id === id
-          ? { ...r, status: r.status === 'active' ? 'returned' : 'active' }
-          : r
-      )
+    const updated = soundRentals.map((r) =>
+      r.id === id ? { ...r, status: r.status === 'active' ? 'returned' : 'active' } : r
     );
+    setSoundRentals(updated);
+    syncToBackend({ soundRentals: updated });
   };
 
   // Sound Equipment Inventory Handlers
   const addEquipment = (newItem) => {
     const eqObj = { ...newItem, id: `eq-${Date.now()}` };
-    setSoundInventory((prev) => [...prev, eqObj]);
+    const updated = [...soundInventory, eqObj];
+    setSoundInventory(updated);
+    syncToBackend({ soundInventory: updated });
   };
 
   const updateEquipment = (id, updatedFields) => {
-    setSoundInventory((prev) =>
-      prev.map((eq) => (eq.id === id ? { ...eq, ...updatedFields } : eq))
-    );
+    const updated = soundInventory.map((eq) => (eq.id === id ? { ...eq, ...updatedFields } : eq));
+    setSoundInventory(updated);
+    syncToBackend({ soundInventory: updated });
   };
 
   const deleteEquipment = (id) => {
-    setSoundInventory((prev) => prev.filter((eq) => eq.id !== id));
+    const updated = soundInventory.filter((eq) => eq.id !== id);
+    setSoundInventory(updated);
+    syncToBackend({ soundInventory: updated });
   };
 
   // Members Handlers
   const addMember = (newMember) => {
     const memObj = { ...newMember, id: `m-${Date.now()}` };
-    setMembers((prev) => [...prev, memObj]);
+    const updated = [...members, memObj];
+    setMembers(updated);
+    syncToBackend({ members: updated });
   };
 
   const updateMember = (id, updatedFields) => {
-    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, ...updatedFields } : m)));
+    const updated = members.map((m) => (m.id === id ? { ...m, ...updatedFields } : m));
+    setMembers(updated);
+    syncToBackend({ members: updated });
   };
 
   const deleteMember = (id) => {
-    setMembers((prev) => prev.filter((m) => m.id !== id));
+    const updated = members.filter((m) => m.id !== id);
+    setMembers(updated);
+    syncToBackend({ members: updated });
   };
 
   // Backup & Restore
@@ -277,6 +369,7 @@ export const AppProvider = ({ children }) => {
       if (importedObj.soundInventory) setSoundInventory(importedObj.soundInventory);
       if (importedObj.soundRentals) setSoundRentals(importedObj.soundRentals);
       if (importedObj.members) setMembers(importedObj.members);
+      syncToBackend(importedObj);
       return { success: true, message: 'डेटा सफलतापूर्वक बैकअप से लोड हो गया है!' };
     } catch (e) {
       return { success: false, message: 'अमान्य बैकअप फाइल!' };
@@ -294,6 +387,16 @@ export const AppProvider = ({ children }) => {
     setMembers(INITIAL_MEMBERS);
     setAdminPin(INITIAL_PIN);
     setIsAdminUnlocked(false);
+    syncToBackend({
+      events: INITIAL_EVENTS,
+      chandaList: INITIAL_CHANDA,
+      expenseList: INITIAL_EXPENSES,
+      custodyList: INITIAL_CUSTODY,
+      soundInventory: INITIAL_SOUND_EQUIPMENT,
+      soundRentals: INITIAL_SOUND_RENTALS,
+      members: INITIAL_MEMBERS,
+      adminPin: INITIAL_PIN,
+    });
   };
 
   const currentEvent = events.find((e) => e.id === selectedEventId) || events[0];

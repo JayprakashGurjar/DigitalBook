@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Volume2, X, IndianRupee, Calendar, Phone, MapPin, PackageCheck } from 'lucide-react';
+import { Volume2, X, IndianRupee, Calendar, Phone, MapPin, Plus, Minus, PackageCheck } from 'lucide-react';
 
 const SoundRentalModal = ({ onClose, initialData = null }) => {
   const { addRental, updateRental, soundInventory } = useApp();
@@ -18,13 +18,27 @@ const SoundRentalModal = ({ onClose, initialData = null }) => {
   const [status, setStatus] = useState(initialData?.status || 'active'); // active | returned
   const [note, setNote] = useState(initialData?.note || '');
 
-  // Quick preset items checklist picker
-  const handleSelectPresetItem = (itemName) => {
-    if (!itemsRented) {
-      setItemsRented(itemName);
-    } else if (!itemsRented.includes(itemName)) {
-      setItemsRented((prev) => `${prev}, ${itemName}`);
-    }
+  // Track quantities per equipment ID: { 'eq1': 2, 'eq2': 1, ... }
+  const [itemQuantities, setItemQuantities] = useState({});
+
+  // Increment item quantity
+  const handleQtyChange = (eqName, delta) => {
+    setItemQuantities((prev) => {
+      const currentQty = prev[eqName] || 0;
+      const newQty = Math.max(0, currentQty + delta);
+      const updated = { ...prev, [eqName]: newQty };
+
+      // Build formatted summary string
+      const summaryParts = [];
+      Object.entries(updated).forEach(([name, qty]) => {
+        if (qty > 0) {
+          summaryParts.push(`${qty} ${name}`);
+        }
+      });
+      setItemsRented(summaryParts.join(', '));
+
+      return updated;
+    });
   };
 
   const handleSubmit = (e) => {
@@ -113,25 +127,45 @@ const SoundRentalModal = ({ onClose, initialData = null }) => {
             />
           </div>
 
-          {/* Quick Equipment Items Selectors */}
+          {/* Interactive Equipment Quantity Selector */}
           <div className="form-group highlight-bg">
-            <label>सामान का चुनाव (Quick Items Picker)</label>
-            <div className="item-chips-wrap">
-              {soundInventory.map((eq) => (
-                <button
-                  type="button"
-                  key={eq.id}
-                  className="chip-btn"
-                  onClick={() => handleSelectPresetItem(eq.name)}
-                >
-                  + {eq.name}
-                </button>
-              ))}
+            <label>🔊 सामान का चुनाव एवं संख्या (Equipment & Quantity Picker)</label>
+            <div className="equipment-qty-grid">
+              {soundInventory.map((eq) => {
+                const qty = itemQuantities[eq.name] || 0;
+                return (
+                  <div key={eq.id} className={`qty-item-card ${qty > 0 ? 'active' : ''}`}>
+                    <div className="qty-item-info">
+                      <span className="qty-item-name">{eq.name}</span>
+                      <span className="qty-item-stock">कुल स्टॉक: {eq.quantity} {eq.unit}</span>
+                    </div>
+
+                    <div className="qty-counter-controls">
+                      <button
+                        type="button"
+                        className="btn-qty-minus"
+                        onClick={() => handleQtyChange(eq.name, -1)}
+                        disabled={qty <= 0}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="qty-number-display">{qty}</span>
+                      <button
+                        type="button"
+                        className="btn-qty-plus"
+                        onClick={() => handleQtyChange(eq.name, 1)}
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           <div className="form-group">
-            <label>किराये पर दिए गए सामान का विवरण *</label>
+            <label>किराये पर दिए गए सामान का कुल विवरण *</label>
             <textarea
               rows={2}
               placeholder="उदा. 2 टॉप स्पीकर, 1 एम्पलीफायर, 2 माइक, केबल बॉक्स"

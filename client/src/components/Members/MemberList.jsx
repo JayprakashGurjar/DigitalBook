@@ -5,7 +5,6 @@ import {
   Users,
   UserPlus,
   Phone,
-  MapPin,
   Edit2,
   Trash2,
   X,
@@ -29,7 +28,6 @@ const MemberList = () => {
   // Form State
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
 
   const [showPinModal, setShowPinModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
@@ -37,7 +35,6 @@ const MemberList = () => {
   const openAddMemberModal = () => {
     setName('');
     setPhone('');
-    setAddress('');
     setEditMemberData(null);
     setShowMemberModal(true);
   };
@@ -45,9 +42,26 @@ const MemberList = () => {
   const openEditMemberModal = (mem) => {
     setName(mem.name);
     setPhone(mem.phone || '');
-    setAddress(mem.address || '');
     setEditMemberData(mem);
     setShowMemberModal(true);
+  };
+
+  const handleDeleteMember = (mem) => {
+    handleProtectedAction(() => {
+      if (
+        window.confirm(
+          `क्या आप निश्चित रूप से '${mem.name}' को समिति सदस्य सूची से हटाना चाहते हैं?`
+        )
+      ) {
+        deleteMember(mem.id);
+      }
+    });
+  };
+
+  const handleEditMemberClick = (mem) => {
+    handleProtectedAction(() => {
+      openEditMemberModal(mem);
+    });
   };
 
   const handleSubmit = (e) => {
@@ -58,13 +72,11 @@ const MemberList = () => {
       updateMember(editMemberData.id, {
         name,
         phone,
-        address,
       });
     } else {
       addMember({
         name,
         phone,
-        address,
       });
     }
 
@@ -123,18 +135,16 @@ const MemberList = () => {
               </div>
 
               <div className="member-body">
-                {mem.phone && (
+                {mem.phone ? (
                   <div className="member-info-row">
                     <Phone size={14} className="text-gold" />
-                    <a href={`tel:${mem.phone}`} className="phone-link">
+                    <a href={`tel:${mem.phone}`} className="phone-link font-semibold">
                       {mem.phone}
                     </a>
                   </div>
-                )}
-                {mem.address && (
+                ) : (
                   <div className="member-info-row text-sub">
-                    <MapPin size={14} />
-                    <span>{mem.address}</span>
+                    <span>मोबाइल नं.: दर्ज नहीं</span>
                   </div>
                 )}
 
@@ -146,32 +156,22 @@ const MemberList = () => {
                 </div>
               </div>
 
-              {isAdminUnlocked && (
-                <div className="member-card-footer">
-                  <button
-                    className="btn-action-icon"
-                    onClick={() => openEditMemberModal(mem)}
-                    title="बदलें"
-                  >
-                    <Edit2 size={16} /> बदलें
-                  </button>
-                  <button
-                    className="btn-action-icon text-red"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `क्या आप '${mem.name}' को समिति सदस्य सूची से हटाना चाहते हैं?`
-                        )
-                      ) {
-                        deleteMember(mem.id);
-                      }
-                    }}
-                    title="हटाएं"
-                  >
-                    <Trash2 size={16} /> हटाएं
-                  </button>
-                </div>
-              )}
+              <div className="member-card-footer">
+                <button
+                  className="btn-action-icon"
+                  onClick={() => handleEditMemberClick(mem)}
+                  title="सदस्य विवरण बदलें"
+                >
+                  <Edit2 size={16} /> बदलें
+                </button>
+                <button
+                  className="btn-action-icon text-red"
+                  onClick={() => handleDeleteMember(mem)}
+                  title="सदस्य सूची से हटाएं"
+                >
+                  <Trash2 size={16} /> सदस्य हटाएं
+                </button>
+              </div>
             </div>
           );
         })}
@@ -206,26 +206,15 @@ const MemberList = () => {
                 />
               </div>
 
-              <div className="form-row-2">
-                <div className="form-group">
-                  <label>मोबाइल नंबर</label>
-                  <input
-                    type="tel"
-                    placeholder="9876543210"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>पता / मोहल्ला</label>
-                  <input
-                    type="text"
-                    placeholder="उदा. मेन रोड, वार्ड 1"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                  />
-                </div>
+              <div className="form-group">
+                <label>मोबाइल नंबर *</label>
+                <input
+                  type="tel"
+                  placeholder="उदा. 9876543210"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
               </div>
 
               <div className="modal-footer">

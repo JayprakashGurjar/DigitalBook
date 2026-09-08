@@ -8,6 +8,7 @@ import {
   CheckCircle,
   X,
   PlusCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import AdminPinModal from '../AdminPinModal';
 
@@ -41,6 +42,22 @@ const EventHeader = () => {
     setShowNewEventModal(true);
   };
 
+  const handleDeleteEventClick = () => {
+    if (!currentEvent) return;
+    if (!isAdminUnlocked) {
+      setPendingAction('delete_event');
+      setShowPinModal(true);
+      return;
+    }
+    if (
+      window.confirm(
+        `क्या आप निश्चित रूप से '${currentEvent.name}' कार्यक्रम और इसके सभी चंदा/खर्च रिकॉर्ड्स हटाना चाहते हैं?`
+      )
+    ) {
+      deleteEvent(currentEvent.id);
+    }
+  };
+
   const handleFormSubmit = (e) => {
     e.preventDefault();
     if (!eventName.trim()) return;
@@ -56,22 +73,6 @@ const EventHeader = () => {
     setEventName('');
     setDescription('');
     setShowNewEventModal(false);
-  };
-
-  const handleDeleteEventClick = () => {
-    if (!currentEvent) return;
-    if (!isAdminUnlocked) {
-      setPendingAction('delete_event');
-      setShowPinModal(true);
-      return;
-    }
-    if (
-      window.confirm(
-        `क्या आप निश्चित रूप से '${currentEvent.name}' कार्यक्रम और इसके सभी चंदा/खर्च रिकॉर्ड्स हटाना चाहते हैं?`
-      )
-    ) {
-      deleteEvent(currentEvent.id);
-    }
   };
 
   return (
@@ -100,16 +101,17 @@ const EventHeader = () => {
         <div className="event-btn-group">
           <button className="btn-primary" onClick={handleCreateEventClick}>
             <PlusCircle size={16} />
-            <span>नया कार्यक्रम जोड़ें</span>
+            <span>+ नया कार्यक्रम जोड़ें</span>
           </button>
 
-          {currentEvent && isAdminUnlocked && (
+          {currentEvent && (
             <button
-              className="btn-icon text-red"
+              className="btn-secondary text-red"
               onClick={handleDeleteEventClick}
-              title="कार्यक्रम हटाएं"
+              title="वर्तमान कार्यक्रम हटाएं"
             >
               <Trash2 size={16} />
+              <span>कार्यक्रम हटाएं</span>
             </button>
           )}
         </div>
@@ -210,7 +212,17 @@ const EventHeader = () => {
           onClose={() => setShowPinModal(false)}
           onSuccess={() => {
             if (pendingAction === 'create_event') setShowNewEventModal(true);
-            if (pendingAction === 'delete_event') handleDeleteEventClick();
+            if (pendingAction === 'delete_event') {
+              if (currentEvent) {
+                if (
+                  window.confirm(
+                    `क्या आप निश्चित रूप से '${currentEvent.name}' कार्यक्रम और इसके सभी चंदा/खर्च रिकॉर्ड्स हटाना चाहते हैं?`
+                  )
+                ) {
+                  deleteEvent(currentEvent.id);
+                }
+              }
+            }
             setPendingAction(null);
           }}
         />

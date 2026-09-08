@@ -13,6 +13,9 @@ import {
 const AppContext = createContext();
 const API_BASE_URL = 'http://localhost:5000/api';
 
+
+
+
 export const useApp = () => {
   const context = useContext(AppContext);
   if (!context) {

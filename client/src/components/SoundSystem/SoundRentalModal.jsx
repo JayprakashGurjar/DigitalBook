@@ -1,6 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Volume2, X, IndianRupee, Calendar, Phone, MapPin, Plus, Minus, PackageCheck } from 'lucide-react';
+import {
+  Volume2,
+  X,
+  IndianRupee,
+  Calendar,
+  Phone,
+  MapPin,
+  Plus,
+  Minus,
+  CheckCircle2,
+  Package,
+  Layers,
+} from 'lucide-react';
 
 const SoundRentalModal = ({ onClose, initialData = null }) => {
   const { addRental, updateRental, soundInventory } = useApp();
@@ -18,17 +30,29 @@ const SoundRentalModal = ({ onClose, initialData = null }) => {
   const [status, setStatus] = useState(initialData?.status || 'active'); // active | returned
   const [note, setNote] = useState(initialData?.note || '');
 
-  // Track quantities per equipment ID: { 'eq1': 2, 'eq2': 1, ... }
+  // Track quantities per equipment name
   const [itemQuantities, setItemQuantities] = useState({});
 
-  // Increment item quantity
+  // Get icon based on equipment name
+  const getEquipmentIcon = (name) => {
+    if (name.includes('स्पीकर') || name.includes('Speaker')) return '🔊';
+    if (name.includes('वूफर') || name.includes('Bass')) return '🔊';
+    if (name.includes('एम्पलीफायर') || name.includes('Amplifier')) return '⚡';
+    if (name.includes('मिक्सर') || name.includes('Mixer')) return '🎛️';
+    if (name.includes('माइक') || name.includes('Mike')) return '🎙️';
+    if (name.includes('केबल') || name.includes('Wire')) return '🔌';
+    if (name.includes('लाइट') || name.includes('Light')) return '💡';
+    return '📦';
+  };
+
+  // Increment/Decrement item quantity
   const handleQtyChange = (eqName, delta) => {
     setItemQuantities((prev) => {
       const currentQty = prev[eqName] || 0;
       const newQty = Math.max(0, currentQty + delta);
       const updated = { ...prev, [eqName]: newQty };
 
-      // Build formatted summary string
+      // Format summary string
       const summaryParts = [];
       Object.entries(updated).forEach(([name, qty]) => {
         if (qty > 0) {
@@ -40,6 +64,11 @@ const SoundRentalModal = ({ onClose, initialData = null }) => {
       return updated;
     });
   };
+
+  const totalSelectedCount = Object.values(itemQuantities).reduce(
+    (sum, q) => sum + q,
+    0
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -127,32 +156,59 @@ const SoundRentalModal = ({ onClose, initialData = null }) => {
             />
           </div>
 
-          {/* Interactive Equipment Quantity Selector */}
-          <div className="form-group highlight-bg">
-            <label>🔊 सामान का चुनाव एवं संख्या (Equipment & Quantity Picker)</label>
+          {/* Upgraded Premium Equipment & Quantity Selector UI */}
+          <div className="form-group highlight-bg-selector">
+            <div className="selector-header">
+              <div className="selector-title">
+                <Volume2 size={18} className="text-saffron" />
+                <span>साउंड सामग्री एवं मात्रा चुनाव (Equipment & Quantity Picker)</span>
+              </div>
+              <span className="selected-count-badge">
+                {totalSelectedCount > 0
+                  ? `✅ ${totalSelectedCount} नग चुने गए`
+                  : '0 चुने गए'}
+              </span>
+            </div>
+
             <div className="equipment-qty-grid">
               {soundInventory.map((eq) => {
                 const qty = itemQuantities[eq.name] || 0;
+                const icon = getEquipmentIcon(eq.name);
+
                 return (
-                  <div key={eq.id} className={`qty-item-card ${qty > 0 ? 'active' : ''}`}>
-                    <div className="qty-item-info">
-                      <span className="qty-item-name">{eq.name}</span>
-                      <span className="qty-item-stock">कुल स्टॉक: {eq.quantity} {eq.unit}</span>
+                  <div
+                    key={eq.id}
+                    className={`qty-item-card-premium ${qty > 0 ? 'selected-active' : ''}`}
+                  >
+                    <div className="qty-card-top">
+                      <span className="eq-icon-badge">{icon}</span>
+                      <div className="eq-details">
+                        <h4 className="eq-name-title">{eq.name}</h4>
+                        <span className="eq-stock-tag">
+                          उपलब्ध: {eq.quantity} {eq.unit}
+                        </span>
+                      </div>
+                      {qty > 0 && (
+                        <CheckCircle2 size={18} className="text-green check-icon" />
+                      )}
                     </div>
 
-                    <div className="qty-counter-controls">
+                    <div className="qty-counter-row">
                       <button
                         type="button"
-                        className="btn-qty-minus"
+                        className="btn-counter btn-minus"
                         onClick={() => handleQtyChange(eq.name, -1)}
                         disabled={qty <= 0}
                       >
                         <Minus size={14} />
                       </button>
-                      <span className="qty-number-display">{qty}</span>
+                      <div className="qty-value-wrap">
+                        <span className="qty-value-text">{qty}</span>
+                        <span className="qty-unit-sub">{eq.unit}</span>
+                      </div>
                       <button
                         type="button"
-                        className="btn-qty-plus"
+                        className="btn-counter btn-plus"
                         onClick={() => handleQtyChange(eq.name, 1)}
                       >
                         <Plus size={14} />
@@ -162,10 +218,24 @@ const SoundRentalModal = ({ onClose, initialData = null }) => {
                 );
               })}
             </div>
+
+            {/* Live Selected Tags Preview */}
+            {itemsRented && (
+              <div className="selected-tags-preview">
+                <span className="tags-label">चुने गए सामान का विवरण:</span>
+                <div className="tags-list">
+                  {itemsRented.split(', ').map((tag, idx) => (
+                    <span key={idx} className="selected-tag-item">
+                      📦 {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="form-group">
-            <label>किराये पर दिए गए सामान का कुल विवरण *</label>
+            <label>सामान का कुल विवरण (ज़रूरत होने पर बदलें) *</label>
             <textarea
               rows={2}
               placeholder="उदा. 2 टॉप स्पीकर, 1 एम्पलीफायर, 2 माइक, केबल बॉक्स"

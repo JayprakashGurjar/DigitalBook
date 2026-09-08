@@ -18,24 +18,42 @@ import {
   MapPin,
   Package,
   Boxes,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownLeft,
+  RefreshCw,
+  Wrench,
+  UserCheck,
+  ShieldAlert,
+  Landmark,
 } from 'lucide-react';
 import SoundRentalModal from './SoundRentalModal';
 import SoundInventoryModal from './SoundInventoryModal';
+import SoundFundModal from './SoundFundModal';
 import AdminPinModal from '../AdminPinModal';
 
 const SoundSystemMain = () => {
   const {
     soundInventory,
     soundRentals,
+    soundFundTxns,
+    soundFundTotals,
     toggleRentalStatus,
     deleteRental,
     deleteEquipment,
+    toggleSoundFundStatus,
+    deleteSoundFundTxn,
     isAdminUnlocked,
   } = useApp();
 
+  const [activeViewMode, setActiveViewMode] = useState('rentals'); // rentals | inventory | fund
+
+  // Rentals Filters
   const [activeRentalFilter, setActiveRentalFilter] = useState('all'); // all | active | returned
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeViewMode, setActiveViewMode] = useState('rentals'); // rentals | inventory
+
+  // Fund Filters
+  const [activeFundFilter, setActiveFundFilter] = useState('all'); // all | custody | event | maintenance | income
 
   // Modals
   const [showRentalModal, setShowRentalModal] = useState(false);
@@ -43,6 +61,9 @@ const SoundSystemMain = () => {
 
   const [showEqModal, setShowEqModal] = useState(false);
   const [editEqData, setEditEqData] = useState(null);
+
+  const [showFundModal, setShowFundModal] = useState(false);
+  const [editFundData, setEditFundData] = useState(null);
 
   const [showPinModal, setShowPinModal] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
@@ -61,6 +82,22 @@ const SoundSystemMain = () => {
     );
   });
 
+  // Filter Sound Fund Txns
+  const filteredFundTxns = soundFundTxns.filter((t) => {
+    if (activeFundFilter === 'custody' && t.type !== 'custody_given' && t.type !== 'custody_returned') return false;
+    if (activeFundFilter === 'event' && t.type !== 'transfer_to_event') return false;
+    if (activeFundFilter === 'maintenance' && t.type !== 'maintenance_expense') return false;
+    if (activeFundFilter === 'income' && t.type !== 'rental_income') return false;
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (t.title && t.title.toLowerCase().includes(q)) ||
+      (t.holderName && t.holderName.toLowerCase().includes(q)) ||
+      (t.eventName && t.eventName.toLowerCase().includes(q)) ||
+      (t.note && t.note.toLowerCase().includes(q))
+    );
+  });
+
   const handleProtectedAction = (actionFn) => {
     if (!isAdminUnlocked) {
       setPendingAction({ fn: actionFn });
@@ -76,9 +113,26 @@ const SoundSystemMain = () => {
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
   };
 
+  const getFundTypeBadge = (type) => {
+    switch (type) {
+      case 'rental_income':
+        return { label: '💰 किराया आय', color: 'badge-green', icon: ArrowDownLeft };
+      case 'transfer_to_event':
+        return { label: '🚩 धार्मिक कार्य में प्रयोग', color: 'badge-saffron', icon: ArrowUpRight };
+      case 'custody_given':
+        return { label: '👤 अमानत / सुपुर्दगी', color: 'badge-gold', icon: UserCheck };
+      case 'custody_returned':
+        return { label: '🔄 अमानत वापस कोष में', color: 'badge-green', icon: RefreshCw };
+      case 'maintenance_expense':
+        return { label: '🛠️ साउंड मरम्मत వ్యय', color: 'badge-red', icon: Wrench };
+      default:
+        return { label: 'लेन-देन', color: 'badge-member', icon: Wallet };
+    }
+  };
+
   return (
     <div className="sound-system-container">
-      {/* View Switcher Header: Rentals Register vs Equipment Stock */}
+      {/* View Switcher Header: Rentals vs Equipment Stock vs Fund Ledger */}
       <div className="sound-toolbar">
         <div className="sound-view-toggle">
           <button
@@ -86,19 +140,26 @@ const SoundSystemMain = () => {
             onClick={() => setActiveViewMode('rentals')}
           >
             <Volume2 size={18} />
-            <span>साउंड किराया बुकिंग रजिस्टर</span>
+            <span>साउंड किराया रजिस्टर</span>
           </button>
           <button
             className={`toggle-tab ${activeViewMode === 'inventory' ? 'active' : ''}`}
             onClick={() => setActiveViewMode('inventory')}
           >
             <Boxes size={18} />
-            <span>सामग्री स्टॉक सूची ({soundInventory.length})</span>
+            <span>सामग्री स्टॉक ({soundInventory.length})</span>
+          </button>
+          <button
+            className={`toggle-tab ${activeViewMode === 'fund' ? 'active' : ''}`}
+            onClick={() => setActiveViewMode('fund')}
+          >
+            <Wallet size={18} />
+            <span>साउंड आय-व्यय व कोष</span>
           </button>
         </div>
 
         <div className="sound-actions">
-          {activeViewMode === 'rentals' ? (
+          {activeViewMode === 'rentals' && (
             <button
               className="btn-primary"
               onClick={() =>
@@ -111,7 +172,9 @@ const SoundSystemMain = () => {
               <PlusCircle size={16} />
               <span>+ नई साउंड बुकिंग</span>
             </button>
-          ) : (
+          )}
+
+          {activeViewMode === 'inventory' && (
             <button
               className="btn-primary"
               onClick={() =>
@@ -125,10 +188,25 @@ const SoundSystemMain = () => {
               <span>+ नई सामग्री जोड़ें</span>
             </button>
           )}
+
+          {activeViewMode === 'fund' && (
+            <button
+              className="btn-primary"
+              onClick={() =>
+                handleProtectedAction(() => {
+                  setEditFundData(null);
+                  setShowFundModal(true);
+                })
+              }
+            >
+              <PlusCircle size={16} />
+              <span>+ नया कोष लेन-देन (अमानत/ट्रांसफर)</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Rentals View */}
+      {/* Rentals View Mode */}
       {activeViewMode === 'rentals' && (
         <div className="rentals-section">
           {/* Subfilter & Search Bar */}
@@ -268,35 +346,37 @@ const SoundSystemMain = () => {
                         >
                           <Share2 size={16} /> WhatsApp
                         </button>
-                        {isAdminUnlocked && (
-                          <button
-                            className={`btn-status-toggle ${
-                              rental.status === 'active' ? 'btn-active-toggle' : ''
-                            }`}
-                            onClick={() => toggleRentalStatus(rental.id)}
-                            title="सामान वापसी स्टेटस बदलें"
-                          >
-                            {rental.status === 'active'
-                              ? 'सामान जमा दर्ज करें'
-                              : 'वापस एक्टिव करें'}
-                          </button>
-                        )}
+                        <button
+                          className={`btn-status-toggle ${
+                            rental.status === 'active' ? 'btn-active-toggle' : ''
+                          }`}
+                          onClick={() =>
+                            handleProtectedAction(() => toggleRentalStatus(rental.id))
+                          }
+                          title="सामान वापसी स्टेटस बदलें"
+                        >
+                          {rental.status === 'active'
+                            ? 'सामान जमा दर्ज करें'
+                            : 'वापस एक्टिव करें'}
+                        </button>
                       </div>
 
-                      {isAdminUnlocked && (
-                        <div className="right-btns">
-                          <button
-                            className="btn-action-icon"
-                            onClick={() => {
+                      <div className="right-btns">
+                        <button
+                          className="btn-action-icon"
+                          onClick={() =>
+                            handleProtectedAction(() => {
                               setEditRentalData(rental);
                               setShowRentalModal(true);
-                            }}
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            className="btn-action-icon text-red"
-                            onClick={() => {
+                            })
+                          }
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          className="btn-action-icon text-red"
+                          onClick={() =>
+                            handleProtectedAction(() => {
                               if (
                                 window.confirm(
                                   `क्या आप ${rental.renterName} की बुकिंग हटाना चाहते हैं?`
@@ -304,12 +384,12 @@ const SoundSystemMain = () => {
                               ) {
                                 deleteRental(rental.id);
                               }
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      )}
+                            })
+                          }
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -319,7 +399,7 @@ const SoundSystemMain = () => {
         </div>
       )}
 
-      {/* Equipment Inventory View */}
+      {/* Inventory View Mode */}
       {activeViewMode === 'inventory' && (
         <div className="inventory-section">
           <div className="card-table-responsive">
@@ -343,20 +423,22 @@ const SoundSystemMain = () => {
                       <span className="badge badge-member">{eq.condition}</span>
                     </td>
                     <td>
-                      {isAdminUnlocked && (
-                        <div className="cell-actions">
-                          <button
-                            className="btn-action-icon"
-                            onClick={() => {
+                      <div className="cell-actions">
+                        <button
+                          className="btn-action-icon"
+                          onClick={() =>
+                            handleProtectedAction(() => {
                               setEditEqData(eq);
                               setShowEqModal(true);
-                            }}
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            className="btn-action-icon text-red"
-                            onClick={() => {
+                            })
+                          }
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          className="btn-action-icon text-red"
+                          onClick={() =>
+                            handleProtectedAction(() => {
                               if (
                                 window.confirm(
                                   `क्या आप सामग्री '${eq.name}' को सूची से हटाना चाहते हैं?`
@@ -364,18 +446,259 @@ const SoundSystemMain = () => {
                               ) {
                                 deleteEquipment(eq.id);
                               }
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      )}
+                            })
+                          }
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Sound Fund & Custody Ledger View Mode */}
+      {activeViewMode === 'fund' && (
+        <div className="fund-section">
+          {/* Top Summary Cards Grid */}
+          <div className="fund-stats-grid">
+            <div className="fund-stat-card border-green">
+              <div className="stat-icon bg-green-light text-green">
+                <ArrowDownLeft size={20} />
+              </div>
+              <div className="stat-info">
+                <span className="stat-label">कुल किराया आय</span>
+                <h3 className="stat-val text-green">
+                  {formatCurrency(soundFundTotals.totalRentEarned)}
+                </h3>
+              </div>
+            </div>
+
+            <div className="fund-stat-card border-saffron">
+              <div className="stat-icon bg-saffron-light text-saffron">
+                <Landmark size={20} />
+              </div>
+              <div className="stat-info">
+                <span className="stat-label">धार्मिक कार्य में प्रयोग</span>
+                <h3 className="stat-val text-saffron">
+                  {formatCurrency(soundFundTotals.transferredToEvents)}
+                </h3>
+              </div>
+            </div>
+
+            <div className="fund-stat-card border-gold">
+              <div className="stat-icon bg-gold-light text-gold">
+                <ShieldAlert size={20} />
+              </div>
+              <div className="stat-info">
+                <span className="stat-label">सदस्य/व्यक्ति के पास अमानत</span>
+                <h3 className="stat-val text-gold">
+                  {formatCurrency(soundFundTotals.inCustody)}
+                </h3>
+              </div>
+            </div>
+
+            <div className="fund-stat-card border-red">
+              <div className="stat-icon bg-red-light text-red">
+                <Wrench size={20} />
+              </div>
+              <div className="stat-info">
+                <span className="stat-label">साउंड मरम्मत व व्यय</span>
+                <h3 className="stat-val text-red">
+                  {formatCurrency(soundFundTotals.maintenanceExp)}
+                </h3>
+              </div>
+            </div>
+
+            <div className="fund-stat-card border-primary highlight-card">
+              <div className="stat-icon bg-saffron text-dark font-bold">
+                ₹
+              </div>
+              <div className="stat-info">
+                <span className="stat-label">उपलब्ध नकद साउंड कोष</span>
+                <h3 className="stat-val text-saffron font-bold">
+                  {formatCurrency(soundFundTotals.netAvailableFund)}
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          {/* Subfilter Row */}
+          <div className="filter-bar-row">
+            <div className="ledger-subtabs">
+              <button
+                className={`subtab-btn ${activeFundFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setActiveFundFilter('all')}
+              >
+                सभी लेन-देन ({soundFundTxns.length})
+              </button>
+              <button
+                className={`subtab-btn ${activeFundFilter === 'custody' ? 'active' : ''}`}
+                onClick={() => setActiveFundFilter('custody')}
+              >
+                🔒 अमानत/सुपुर्दगी
+              </button>
+              <button
+                className={`subtab-btn ${activeFundFilter === 'event' ? 'active' : ''}`}
+                onClick={() => setActiveFundFilter('event')}
+              >
+                🚩 कार्यक्रम में दिया
+              </button>
+              <button
+                className={`subtab-btn ${activeFundFilter === 'maintenance' ? 'active' : ''}`}
+                onClick={() => setActiveFundFilter('maintenance')}
+              >
+                🛠️ मरम्मत व्यय
+              </button>
+              <button
+                className={`subtab-btn ${activeFundFilter === 'income' ? 'active' : ''}`}
+                onClick={() => setActiveFundFilter('income')}
+              >
+                💰 किराया आय
+              </button>
+            </div>
+
+            <div className="search-box">
+              <Search size={16} className="search-icon" />
+              <input
+                type="text"
+                placeholder="नाम, विवरण या आयोजन खोजें..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Fund Transactions Grid */}
+          {filteredFundTxns.length === 0 ? (
+            <div className="empty-card">
+              <p>कोई कोष लेन-देन रिकॉर्ड नहीं मिला।</p>
+            </div>
+          ) : (
+            <div className="fund-txns-list">
+              {filteredFundTxns.map((txn) => {
+                const badge = getFundTypeBadge(txn.type);
+                const BadgeIcon = badge.icon;
+                const isCustody = txn.type === 'custody_given';
+                const isReturned = txn.status === 'returned';
+
+                return (
+                  <div key={txn.id} className="fund-txn-card">
+                    <div className="fund-txn-main">
+                      <div className="fund-txn-header">
+                        <span className={`badge ${badge.color} flex-align`}>
+                          <BadgeIcon size={13} /> {badge.label}
+                        </span>
+                        <span className="fund-date">{formatDate(txn.date)}</span>
+                      </div>
+
+                      <h4 className="fund-txn-title">{txn.title}</h4>
+
+                      {txn.holderName && (
+                        <p className="fund-txn-sub">
+                          👤 किसके पास अमानत: <strong>{txn.holderName}</strong>
+                        </p>
+                      )}
+                      {txn.eventName && (
+                        <p className="fund-txn-sub">
+                          🚩 कार्यक्रम: <strong>{txn.eventName}</strong>
+                        </p>
+                      )}
+                      {txn.note && <p className="fund-txn-note">📌 {txn.note}</p>}
+
+                      {isCustody && (
+                        <div className="custody-status-wrap">
+                          <span
+                            className={`status-pill ${
+                              isReturned ? 'returned' : 'active'
+                            }`}
+                          >
+                            {isReturned ? (
+                              <>
+                                <CheckCircle size={14} /> कोष में वापस प्राप्त
+                              </>
+                            ) : (
+                              <>
+                                <ShieldAlert size={14} /> अमानत में जमा (व्यक्ति के पास)
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="fund-txn-right">
+                      <div className="fund-amount-wrap">
+                        <span className="label">राशि</span>
+                        <span
+                          className={`fund-amount-val ${
+                            txn.type === 'rental_income' || txn.type === 'custody_returned'
+                              ? 'text-green'
+                              : 'text-saffron'
+                          }`}
+                        >
+                          {txn.type === 'rental_income' || txn.type === 'custody_returned'
+                            ? '+'
+                            : '-'}
+                          {formatCurrency(txn.amount)}
+                        </span>
+                      </div>
+
+                      <div className="fund-actions">
+                        {isCustody && (
+                          <button
+                            className={`btn-status-toggle ${
+                              !isReturned ? 'btn-active-toggle' : ''
+                            }`}
+                            onClick={() =>
+                              handleProtectedAction(() => toggleSoundFundStatus(txn.id))
+                            }
+                            title="अमानत वापसी दर्ज करें"
+                          >
+                            {!isReturned ? 'अमानत वापसी दर्ज करें' : 'पुनः अमानत मार्क करें'}
+                          </button>
+                        )}
+
+                        <button
+                          className="btn-action-icon"
+                          onClick={() =>
+                            handleProtectedAction(() => {
+                              setEditFundData(txn);
+                              setShowFundModal(true);
+                            })
+                          }
+                          title="संशोधित करें"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          className="btn-action-icon text-red"
+                          onClick={() =>
+                            handleProtectedAction(() => {
+                              if (
+                                window.confirm(
+                                  `क्या आप लेन-देन '${txn.title}' को हटाना चाहते हैं?`
+                                )
+                              ) {
+                                deleteSoundFundTxn(txn.id);
+                              }
+                            })
+                          }
+                          title="हटाएं"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -400,6 +723,16 @@ const SoundSystemMain = () => {
         />
       )}
 
+      {showFundModal && (
+        <SoundFundModal
+          initialData={editFundData}
+          onClose={() => {
+            setShowFundModal(false);
+            setEditFundData(null);
+          }}
+        />
+      )}
+
       {showPinModal && (
         <AdminPinModal
           onClose={() => setShowPinModal(false)}
@@ -414,3 +747,4 @@ const SoundSystemMain = () => {
 };
 
 export default SoundSystemMain;
+

@@ -1414,6 +1414,169 @@ body {
   margin-top: auto;
 }
 
+/* ===== Sound Rent Fund Ledger & Custody Styling ===== */
+.fund-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.fund-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s ease;
+}
+
+.fund-stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.fund-stat-card.border-green { border-left: 4px solid var(--green); }
+.fund-stat-card.border-saffron { border-left: 4px solid var(--primary-saffron); }
+.fund-stat-card.border-gold { border-left: 4px solid var(--gold); }
+.fund-stat-card.border-red { border-left: 4px solid var(--red); }
+.fund-stat-card.border-primary { border-left: 4px solid var(--primary-saffron); }
+
+.fund-stat-card.highlight-card {
+  background: linear-gradient(135deg, rgba(255, 109, 0, 0.12) 0%, rgba(24, 32, 44, 1) 100%);
+}
+
+.stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-info .stat-label {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+}
+
+.stat-info .stat-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.bg-green-light { background: var(--green-light); }
+.bg-saffron-light { background: var(--saffron-light); }
+.bg-gold-light { background: var(--gold-light); }
+.bg-red-light { background: var(--red-light); }
+.bg-saffron { background: var(--primary-saffron); }
+.text-dark { color: #000; }
+
+.fund-txns-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.fund-txn-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: var(--shadow-card);
+}
+
+.fund-txn-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.fund-txn-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fund-date {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+}
+
+.fund-txn-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.fund-txn-sub {
+  font-size: 0.8rem;
+  color: var(--text-sub);
+}
+
+.fund-txn-note {
+  font-size: 0.78rem;
+  color: var(--gold);
+}
+
+.custody-status-wrap {
+  margin-top: 0.3rem;
+}
+
+.fund-txn-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
+.fund-amount-wrap {
+  text-align: right;
+}
+
+.fund-amount-wrap .label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-sub);
+}
+
+.fund-amount-val {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.fund-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.badge-saffron {
+  background: rgba(255, 109, 0, 0.15);
+  color: #ff9800;
+  border: 1px solid rgba(255, 109, 0, 0.3);
+}
+
+.badge-red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
 /* ===== Responsive Breakpoints ===== */
 @media (max-width: 640px) {
   .app-title { font-size: 1.1rem; }
@@ -1434,4 +1597,17 @@ body {
   .search-box {
     width: 100%;
   }
+  .fund-txn-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .fund-txn-right {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 0.6rem;
+  }
 }
+

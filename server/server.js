@@ -95,6 +95,7 @@ app.get('/api/expenses', (req, res) => res.json(readDB().expenseList || []));
 app.get('/api/custody', (req, res) => res.json(readDB().custodyList || []));
 app.get('/api/sound-equipment', (req, res) => res.json(readDB().soundInventory || []));
 app.get('/api/sound-rentals', (req, res) => res.json(readDB().soundRentals || []));
+app.get('/api/sound-fund', (req, res) => res.json(readDB().soundFundTxns || []));
 app.get('/api/members', (req, res) => res.json(readDB().members || []));
 
 app.listen(PORT, () => {

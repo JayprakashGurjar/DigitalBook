@@ -8,13 +8,11 @@ import {
   INITIAL_CUSTODY,
   INITIAL_SOUND_EQUIPMENT,
   INITIAL_SOUND_RENTALS,
+  INITIAL_SOUND_FUND_TXNS,
 } from '../utils/defaultData';
 
 const AppContext = createContext();
 const API_BASE_URL = 'http://localhost:5000/api';
-
-
-
 
 export const useApp = () => {
   const context = useContext(AppContext);
@@ -67,6 +65,7 @@ export const AppProvider = ({ children }) => {
   // Sound System Data
   const [soundInventory, setSoundInventory] = useLocalStorage('samiti_sound_inventory', INITIAL_SOUND_EQUIPMENT);
   const [soundRentals, setSoundRentals] = useLocalStorage('samiti_sound_rentals', INITIAL_SOUND_RENTALS);
+  const [soundFundTxns, setSoundFundTxns] = useLocalStorage('samiti_sound_fund_txns', INITIAL_SOUND_FUND_TXNS);
 
   // Members
   const [members, setMembers] = useLocalStorage('samiti_members', INITIAL_MEMBERS);
@@ -87,6 +86,7 @@ export const AppProvider = ({ children }) => {
           if (data.custodyList) setCustodyList(data.custodyList);
           if (data.soundInventory) setSoundInventory(data.soundInventory);
           if (data.soundRentals) setSoundRentals(data.soundRentals);
+          if (data.soundFundTxns) setSoundFundTxns(data.soundFundTxns);
           if (data.members) setMembers(data.members);
           if (data.adminPin) setAdminPin(data.adminPin);
         }
@@ -108,6 +108,7 @@ export const AppProvider = ({ children }) => {
         custodyList,
         soundInventory,
         soundRentals,
+        soundFundTxns,
         members,
         ...overrideState,
       };
@@ -322,6 +323,42 @@ export const AppProvider = ({ children }) => {
     syncToBackend({ soundInventory: updated });
   };
 
+  // Sound Fund Transactions Handlers
+  const addSoundFundTxn = (newTxn) => {
+    const txnObj = {
+      ...newTxn,
+      id: `sft-${Date.now()}`,
+      date: newTxn.date || new Date().toISOString().split('T')[0],
+      amount: Number(newTxn.amount) || 0,
+      status: newTxn.status || (newTxn.type === 'member_custody' ? 'held' : 'completed'),
+    };
+    const updated = [txnObj, ...soundFundTxns];
+    setSoundFundTxns(updated);
+    syncToBackend({ soundFundTxns: updated });
+  };
+
+  const updateSoundFundTxn = (id, updatedFields) => {
+    const updated = soundFundTxns.map((t) => (t.id === id ? { ...t, ...updatedFields } : t));
+    setSoundFundTxns(updated);
+    syncToBackend({ soundFundTxns: updated });
+  };
+
+  const deleteSoundFundTxn = (id) => {
+    const updated = soundFundTxns.filter((t) => t.id !== id);
+    setSoundFundTxns(updated);
+    syncToBackend({ soundFundTxns: updated });
+  };
+
+  const toggleSoundFundStatus = (id) => {
+    const updated = soundFundTxns.map((t) =>
+      t.id === id
+        ? { ...t, status: t.status === 'held' ? 'returned' : 'held' }
+        : t
+    );
+    setSoundFundTxns(updated);
+    syncToBackend({ soundFundTxns: updated });
+  };
+
   // Members Handlers
   const addMember = (newMember) => {
     const memObj = { ...newMember, id: `m-${Date.now()}` };
@@ -351,6 +388,7 @@ export const AppProvider = ({ children }) => {
       custodyList,
       soundInventory,
       soundRentals,
+      soundFundTxns,
       members,
       exportedAt: new Date().toISOString(),
     };
@@ -371,6 +409,7 @@ export const AppProvider = ({ children }) => {
       if (importedObj.custodyList) setCustodyList(importedObj.custodyList);
       if (importedObj.soundInventory) setSoundInventory(importedObj.soundInventory);
       if (importedObj.soundRentals) setSoundRentals(importedObj.soundRentals);
+      if (importedObj.soundFundTxns) setSoundFundTxns(importedObj.soundFundTxns);
       if (importedObj.members) setMembers(importedObj.members);
       syncToBackend(importedObj);
       return { success: true, message: 'डेटा सफलतापूर्वक बैकअप से लोड हो गया है!' };
@@ -387,6 +426,7 @@ export const AppProvider = ({ children }) => {
     setCustodyList(INITIAL_CUSTODY);
     setSoundInventory(INITIAL_SOUND_EQUIPMENT);
     setSoundRentals(INITIAL_SOUND_RENTALS);
+    setSoundFundTxns(INITIAL_SOUND_FUND_TXNS);
     setMembers(INITIAL_MEMBERS);
     setAdminPin(INITIAL_PIN);
     setIsAdminUnlocked(false);
@@ -397,6 +437,7 @@ export const AppProvider = ({ children }) => {
       custodyList: INITIAL_CUSTODY,
       soundInventory: INITIAL_SOUND_EQUIPMENT,
       soundRentals: INITIAL_SOUND_RENTALS,
+      soundFundTxns: INITIAL_SOUND_FUND_TXNS,
       members: INITIAL_MEMBERS,
       adminPin: INITIAL_PIN,
     });
@@ -453,6 +494,13 @@ export const AppProvider = ({ children }) => {
         updateRental,
         deleteRental,
         toggleRentalStatus,
+
+        // Sound Fund Txns
+        soundFundTxns,
+        addSoundFundTxn,
+        updateSoundFundTxn,
+        deleteSoundFundTxn,
+        toggleSoundFundStatus,
 
         // Members
         members,

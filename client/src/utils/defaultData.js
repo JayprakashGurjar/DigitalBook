@@ -239,3 +239,36 @@ export const INITIAL_SOUND_RENTALS = [
     note: "पूरा किराया प्राप्त हो चुका है एवं सामान सुरक्षित वापस आ गया।",
   },
 ];
+
+export const INITIAL_SOUND_FUND_TXNS = [
+  {
+    id: "sft-1",
+    type: "event_transfer", // event_transfer | member_custody | custody_returned | maintenance_expense
+    title: "गणेशोत्सव 2026 में योगदान",
+    targetName: "गणेशोत्सव 2026",
+    amount: 1500,
+    date: "2026-09-02",
+    status: "completed",
+    note: "साउंड किराए की कमाई से ₹1,500 गणेशोत्सव पंडाल व्यवस्था हेतु दिए गए।",
+  },
+  {
+    id: "sft-2",
+    type: "member_custody",
+    title: "रामप्रसाद जी के पास अमानत जमा",
+    targetName: "रामप्रसाद पटेल",
+    amount: 1000,
+    date: "2026-09-04",
+    status: "held", // held (पास में जमा) | returned (वापस प्राप्त)
+    note: "इमरजेंसी जरूरत हेतु साउंड फंड से ₹1,000 रामप्रसाद जी को अमानत दिए गए।",
+  },
+  {
+    id: "sft-3",
+    type: "maintenance_expense",
+    title: "स्पीकर हैवी केबल एवं जैक मरम्मत",
+    targetName: "इलेक्ट्रॉनिक रिपेयर शॉप",
+    amount: 350,
+    date: "2026-09-01",
+    status: "completed",
+    note: "2 नए स्पीकर केबल व पिन खरीदें।",
+  },
+];

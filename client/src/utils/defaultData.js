@@ -1,8 +1,34 @@
-// Default initial data for Village Samiti Register - Clean Empty Setup
+// Default initial data for Village Samiti Register
 
 export const INITIAL_PIN = "000000";
 
-export const INITIAL_MEMBERS = [];
+export const INITIAL_MEMBERS = [
+    { id: "m1", name: "सालक जादम", phone: "" },
+    { id: "m2", name: "सुनील जादम", phone: "" },
+    { id: "m3", name: "अरुण जादम", phone: "" },
+    { id: "m4", name: "दीपक जादम", phone: "" },
+    { id: "m5", name: "आशीष जादम", phone: "" },
+    { id: "m6", name: "संजय जादम", phone: "" },
+    { id: "m7", name: "ललित जादम", phone: "" },
+    { id: "m8", name: "कपिल जादम", phone: "" },
+    { id: "m9", name: "सुनील पुवार", phone: "" },
+    { id: "m10", name: "राहुल पुवार", phone: "" },
+    { id: "m11", name: "नितिन पुवार", phone: "" },
+    { id: "m12", name: "लल्लू पुवार", phone: "" },
+    { id: "m13", name: "भूपेंद्र जादम", phone: "" },
+    { id: "m14", name: "मोहित जादम", phone: "" },
+    { id: "m15", name: "जयप्रकाश जादम", phone: "" },
+    { id: "m16", name: "समर जादम", phone: "" },
+    { id: "m17", name: "सदाशिव पुवार", phone: "" },
+    { id: "m18", name: "आनंद चावड़ा", phone: "" },
+    { id: "m19", name: "केशव जी बान्या", phone: "" },
+    { id: "m20", name: "राजेश जी बान्या", phone: "" },
+    { id: "m21", name: "सखाराम जी बान्या", phone: "" },
+    { id: "m22", name: "हीरालाल जी पुवार", phone: "" },
+    { id: "m23", name: "लोकेश जी पुवार", phone: "" },
+    { id: "m24", name: "कन्हैया जादम", phone: "" },
+    { id: "m25", name: "अंकित मंडलोई", phone: "" },
+];
 
 export const INITIAL_EVENTS = [];
 

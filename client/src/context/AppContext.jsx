@@ -208,6 +208,7 @@ export const AppProvider = ({ children }) => {
       receiptNo: newChanda.receiptNo || receiptNo,
       date: newChanda.date || new Date().toISOString().split('T')[0],
       amount: Number(newChanda.amount) || 0,
+      paymentStatus: newChanda.paymentStatus || 'paid', // 'paid' (जमा) | 'pledged' (केवल लिखवाया)
     };
     const updated = [chandaObj, ...chandaList];
     setChandaList(updated);
@@ -218,6 +219,18 @@ export const AppProvider = ({ children }) => {
     const updated = chandaList.map((c) =>
       c.id === id ? { ...c, ...updatedFields, amount: Number(updatedFields.amount || c.amount) } : c
     );
+    setChandaList(updated);
+    syncToBackend({ chandaList: updated });
+  };
+
+  const toggleChandaStatus = (id) => {
+    const updated = chandaList.map((c) => {
+      if (c.id === id) {
+        const newStatus = c.paymentStatus === 'pledged' ? 'paid' : 'pledged';
+        return { ...c, paymentStatus: newStatus };
+      }
+      return c;
+    });
     setChandaList(updated);
     syncToBackend({ chandaList: updated });
   };
@@ -484,6 +497,7 @@ export const AppProvider = ({ children }) => {
         addChanda,
         updateChanda,
         deleteChanda,
+        toggleChandaStatus,
 
         // Expenses
         expenseList,

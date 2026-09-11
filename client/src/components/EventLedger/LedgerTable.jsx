@@ -35,10 +35,11 @@ const LedgerTable = () => {
     deleteChanda,
     deleteExpense,
     deleteCustody,
+    toggleChandaStatus,
     isAdminUnlocked,
   } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState('all'); // all | member | village | expenses | custody
+  const [activeSubTab, setActiveSubTab] = useState('all'); // all | paid | pledged | member | village | expenses | custody
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals
@@ -67,8 +68,10 @@ const LedgerTable = () => {
   const currentExpenses = expenseList.filter((e) => e.eventId === currentEvent.id);
   const currentCustody = custodyList.filter((cu) => cu.eventId === currentEvent.id);
 
-  // Search filter
+  // Search & Subtab filter
   const filteredChanda = currentChanda.filter((c) => {
+    if (activeSubTab === 'paid' && c.paymentStatus === 'pledged') return false;
+    if (activeSubTab === 'pledged' && c.paymentStatus !== 'pledged') return false;
     if (activeSubTab === 'member' && c.type !== 'member') return false;
     if (activeSubTab === 'village' && c.type !== 'village') return false;
     if (!searchQuery) return true;
@@ -111,18 +114,20 @@ const LedgerTable = () => {
 
   // WhatsApp Single Receipt Generator
   const shareSingleReceiptWhatsApp = (chanda) => {
+    const isPledged = chanda.paymentStatus === 'pledged';
     let text = `🚩 *नव गणेश एवं दुर्गा उत्सव समिति, गौला* 🚩\n`;
     text += `📜 *चंदा रसीद सं:* ${chanda.receiptNo}\n`;
     text += `------------------------------------\n`;
     text += `👤 *दानदाता:* ${chanda.donorName}\n`;
     text += `📋 *श्रेणी:* ${chanda.type === 'member' ? 'समिति पूर्ण सदस्य' : 'ग्रामीण जन'}\n`;
-    text += `💰 *प्राप्त राशि:* ${formatCurrency(chanda.amount)}\n`;
-    text += `💵 *भुगतान:* ${chanda.paymentMode}\n`;
+    text += `💰 *राशि:* ${formatCurrency(chanda.amount)}\n`;
+    text += `📌 *भुगतान स्थिति:* ${isPledged ? '⏳ लिखवाया (बकाया)' : '✅ जमा प्राप्त (Paid)'}\n`;
+    text += `💵 *माध्यम:* ${chanda.paymentMode}\n`;
     text += `🗓️ *दिनांक:* ${formatDate(chanda.date)}\n`;
     text += `🎉 *कार्यक्रम:* ${currentEvent.name}\n`;
     if (chanda.note) text += `📌 *विवरण:* ${chanda.note}\n`;
     text += `------------------------------------\n`;
-    text += `चंदे के लिए आपका हार्दिक आभार एवं धन्यवाद! 🙏`;
+    text += `दानदाता का हार्दिक आभार एवं धन्यवाद! 🙏`;
 
     const encoded = encodeURIComponent(text);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
@@ -138,6 +143,18 @@ const LedgerTable = () => {
             onClick={() => setActiveSubTab('all')}
           >
             📜 कुल चंदा ({currentChanda.length})
+          </button>
+          <button
+            className={`subtab-btn ${activeSubTab === 'paid' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('paid')}
+          >
+            ✅ जमा प्राप्त ({currentChanda.filter((c) => c.paymentStatus !== 'pledged').length})
+          </button>
+          <button
+            className={`subtab-btn ${activeSubTab === 'pledged' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('pledged')}
+          >
+            ⏳ केवल लिखवाया ({currentChanda.filter((c) => c.paymentStatus === 'pledged').length})
           </button>
           <button
             className={`subtab-btn ${activeSubTab === 'member' ? 'active' : ''}`}
@@ -221,7 +238,7 @@ const LedgerTable = () => {
       </div>
 
       {/* Main Ledger Content Views */}
-      {['all', 'member', 'village'].includes(activeSubTab) && (
+      {['all', 'paid', 'pledged', 'member', 'village'].includes(activeSubTab) && (
         <div className="ledger-list-section">
           {filteredChanda.length === 0 ? (
             <div className="empty-card">
@@ -236,80 +253,114 @@ const LedgerTable = () => {
                     <th>दानदाता का नाम</th>
                     <th>श्रेणी</th>
                     <th>राशि (₹)</th>
-                    <th>भुगतान</th>
+                    <th>भुगतान स्थिति</th>
+                    <th>माध्यम</th>
                     <th>दिनांक</th>
                     <th>टिप / विवरण</th>
                     <th>कार्रवाई</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredChanda.map((c) => (
-                    <tr key={c.id}>
-                      <td className="font-bold text-saffron">{c.receiptNo}</td>
-                      <td>
-                        <div className="donor-name-cell">
-                          <span className="font-semibold">{c.donorName}</span>
-                          {c.phone && <span className="phone-sub">{c.phone}</span>}
-                        </div>
-                      </td>
-                      <td>
-                        <span
-                          className={`badge ${c.type === 'member' ? 'badge-member' : 'badge-village'
+                  {filteredChanda.map((c) => {
+                    const isPledged = c.paymentStatus === 'pledged';
+                    return (
+                      <tr key={c.id}>
+                        <td className="font-bold text-saffron">{c.receiptNo}</td>
+                        <td>
+                          <div className="donor-name-cell">
+                            <span className="font-semibold">{c.donorName}</span>
+                            {c.phone && <span className="phone-sub">{c.phone}</span>}
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            className={`badge ${
+                              c.type === 'member' ? 'badge-member' : 'badge-village'
                             }`}
-                        >
-                          {c.type === 'member' ? 'समिति सदस्य' : 'ग्रामीण जन'}
-                        </span>
-                      </td>
-                      <td className="amount-cell text-green">
-                        {formatCurrency(c.amount)}
-                      </td>
-                      <td>
-                        <span className="pay-mode-pill">{c.paymentMode}</span>
-                      </td>
-                      <td>{formatDate(c.date)}</td>
-                      <td className="text-sub">{c.note || '-'}</td>
-                      <td>
-                        <div className="cell-actions">
-                          <button
-                            className="btn-action-icon text-green"
-                            onClick={() => shareSingleReceiptWhatsApp(c)}
-                            title="व्हाट्सएप रसीद भेजें"
                           >
-                            <Share2 size={16} />
-                          </button>
-                          {isAdminUnlocked && (
-                            <>
-                              <button
-                                className="btn-action-icon"
-                                onClick={() => {
-                                  setEditChandaData(c);
-                                  setShowChandaModal(true);
-                                }}
-                                title="बदलें"
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              <button
-                                className="btn-action-icon text-red"
-                                onClick={() => {
-                                  if (
-                                    window.confirm(
-                                      `क्या आप ${c.donorName} की चंदा रसीद हटाना चाहते हैं?`
-                                    )
-                                  ) {
-                                    deleteChanda(c.id);
-                                  }
-                                }}
-                                title="हटाएं"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {c.type === 'member' ? 'समिति सदस्य' : 'ग्रामीण जन'}
+                          </span>
+                        </td>
+                        <td
+                          className={`amount-cell ${
+                            isPledged ? 'text-gold' : 'text-green'
+                          }`}
+                        >
+                          {formatCurrency(c.amount)}
+                        </td>
+                        <td>
+                          <span
+                            className={`badge ${
+                              isPledged ? 'badge-gold' : 'badge-green'
+                            }`}
+                          >
+                            {isPledged ? '⏳ केवल लिखवाया (बकाया)' : '✅ जमा (Paid)'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="pay-mode-pill">{c.paymentMode}</span>
+                        </td>
+                        <td>{formatDate(c.date)}</td>
+                        <td className="text-sub">{c.note || '-'}</td>
+                        <td>
+                          <div className="cell-actions">
+                            <button
+                              className="btn-action-icon text-green"
+                              onClick={() => shareSingleReceiptWhatsApp(c)}
+                              title="व्हाट्सएप रसीद भेजें"
+                            >
+                              <Share2 size={16} />
+                            </button>
+
+                            <button
+                              className={`btn-status-toggle ${
+                                isPledged ? 'btn-active-toggle' : ''
+                              }`}
+                              onClick={() =>
+                                handleProtectedAction(
+                                  () => toggleChandaStatus(c.id),
+                                  'toggle_chanda'
+                                )
+                              }
+                              title="जमा / लिखवाया स्थिति बदलें"
+                            >
+                              {isPledged ? 'जमा दर्ज करें' : 'लिखवाया दर्ज करें'}
+                            </button>
+
+                            {isAdminUnlocked && (
+                              <>
+                                <button
+                                  className="btn-action-icon"
+                                  onClick={() => {
+                                    setEditChandaData(c);
+                                    setShowChandaModal(true);
+                                  }}
+                                  title="बदलें"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button
+                                  className="btn-action-icon text-red"
+                                  onClick={() => {
+                                    if (
+                                      window.confirm(
+                                        `क्या आप ${c.donorName} की चंदा रसीद हटाना चाहते हैं?`
+                                      )
+                                    ) {
+                                      deleteChanda(c.id);
+                                    }
+                                  }}
+                                  title="हटाएं"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

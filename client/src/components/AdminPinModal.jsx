@@ -44,7 +44,7 @@ const AdminPinModal = ({ onClose, onSuccess }) => {
 
           <div className="form-group">
             <label htmlFor="admin-pin-input">
-              <KeyRound size={16} /> 4-अंकों का पासकोड (Default: 1234)
+              <KeyRound size={16} /> समिति सुरक्षा पासकोड (PIN)
             </label>
             <input
               id="admin-pin-input"

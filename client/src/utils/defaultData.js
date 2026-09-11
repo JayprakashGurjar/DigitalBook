@@ -1,6 +1,6 @@
 // Default initial data for Village Samiti Register - Clean Empty Setup
 
-export const INITIAL_PIN = "1234";
+export const INITIAL_PIN = "000000";
 
 export const INITIAL_MEMBERS = [];
 

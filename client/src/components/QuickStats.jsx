@@ -35,22 +35,22 @@ const QuickStats = () => {
     ? expenseList.filter((e) => e.eventId === currentEvent.id)
     : [];
 
-  const memberTotal = eventChanda
-    .filter((c) => c.type === 'member')
+  const paidChandaTotal = eventChanda
+    .filter((c) => c.paymentStatus !== 'pledged')
     .reduce((sum, c) => sum + Number(c.amount || 0), 0);
 
-  const villageTotal = eventChanda
-    .filter((c) => c.type === 'village')
+  const pledgedChandaTotal = eventChanda
+    .filter((c) => c.paymentStatus === 'pledged')
     .reduce((sum, c) => sum + Number(c.amount || 0), 0);
 
-  const grandChanda = memberTotal + villageTotal;
+  const grandChanda = paidChandaTotal + pledgedChandaTotal;
 
   const grandExpense = eventExpenses.reduce(
     (sum, e) => sum + Number(e.amount || 0),
     0
   );
 
-  const surplusDeficit = grandChanda - grandExpense;
+  const surplusDeficit = paidChandaTotal - grandExpense;
 
   // Active Sound Rentals Summary
   const activeRentals = soundRentals.filter((r) => r.status === 'active');
@@ -66,16 +66,16 @@ const QuickStats = () => {
           {/* Total Chanda Card */}
           <div className="stat-card green-glow">
             <div className="stat-header">
-              <span className="stat-title">कुल जमा चंदा</span>
+              <span className="stat-title">कुल जमा (प्राप्त) चंदा</span>
               <div className="stat-icon-wrap green">
                 <TrendingUp size={20} />
               </div>
             </div>
-            <div className="stat-value text-green">{formatCurrency(grandChanda)}</div>
+            <div className="stat-value text-green">{formatCurrency(paidChandaTotal)}</div>
             <div className="stat-sub">
-              <span>सदस्य: {formatCurrency(memberTotal)}</span>
+              <span>लिखवाया बकाया: <strong>{formatCurrency(pledgedChandaTotal)}</strong></span>
               <span> | </span>
-              <span>ग्रामीण: {formatCurrency(villageTotal)}</span>
+              <span>कुल तय: {formatCurrency(grandChanda)}</span>
             </div>
           </div>
 

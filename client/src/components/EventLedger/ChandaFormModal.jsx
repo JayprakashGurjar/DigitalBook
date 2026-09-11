@@ -9,6 +9,7 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
   const [type, setType] = useState(initialData?.type || 'member'); // member | village
   const [amount, setAmount] = useState(initialData?.amount || '');
   const [paymentMode, setPaymentMode] = useState(initialData?.paymentMode || 'Cash');
+  const [paymentStatus, setPaymentStatus] = useState(initialData?.paymentStatus || 'paid'); // paid | pledged
   const [phone, setPhone] = useState(initialData?.phone || '');
   const [receiptNo, setReceiptNo] = useState(initialData?.receiptNo || '');
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
@@ -36,6 +37,7 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
         type,
         amount: Number(amount),
         paymentMode,
+        paymentStatus,
         phone,
         receiptNo,
         date,
@@ -48,6 +50,7 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
         type,
         amount: Number(amount),
         paymentMode,
+        paymentStatus,
         phone,
         receiptNo,
         date,
@@ -126,6 +129,34 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
               onChange={(e) => setDonorName(e.target.value)}
               required
             />
+          </div>
+
+          {/* Payment Status: Paid vs Pledged */}
+          <div className="form-group highlight-bg">
+            <label>चंदा भुगतान स्थिति (Payment Status) *</label>
+            <div className="radio-group-2">
+              <label className={`radio-card ${paymentStatus === 'paid' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="chandaStatus"
+                  value="paid"
+                  checked={paymentStatus === 'paid'}
+                  onChange={() => setPaymentStatus('paid')}
+                />
+                <span className="text-green font-semibold">✅ जमा प्राप्त हो गया (Paid)</span>
+              </label>
+
+              <label className={`radio-card ${paymentStatus === 'pledged' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="chandaStatus"
+                  value="pledged"
+                  checked={paymentStatus === 'pledged'}
+                  onChange={() => setPaymentStatus('pledged')}
+                />
+                <span className="text-gold font-semibold">⏳ केवल लिखवाया है (बकाया / Due)</span>
+              </label>
+            </div>
           </div>
 
           <div className="form-row-2">

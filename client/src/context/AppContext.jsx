@@ -73,7 +73,7 @@ export const AppProvider = ({ children }) => {
   // Active View Tab: 'ledger' | 'sound' | 'members'
   const [activeTab, setActiveTab] = useState('ledger');
 
-  // Fetch initial data from Backend Server if available
+  // Fetch initial & periodic data from Backend Server if available
   useEffect(() => {
     const fetchBackendData = async () => {
       try {
@@ -94,7 +94,20 @@ export const AppProvider = ({ children }) => {
         // Backend server offline, fallback to LocalStorage seamlessly
       }
     };
+
     fetchBackendData();
+
+    // Live Sync Polling every 10 seconds
+    const pollInterval = setInterval(fetchBackendData, 10000);
+
+    // Refetch on tab focus
+    const handleFocus = () => fetchBackendData();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Sync to Backend Server whenever state updates

@@ -3,6 +3,8 @@ import cors from 'cors';
 import fs from 'fs-extra';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import 'dotenv/config';
+import mongoose from 'mongoose';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,10 +14,56 @@ const PORT = process.env.PORT || 5000;
 const DB_FILE = path.join(__dirname, 'database', 'db.json');
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
-// Helper function to read database
-const readDB = () => {
+// MongoDB setup
+const MONGO_URI = process.env.MONGO_URI;
+let isMongoConnected = false;
+
+const DataSchema = new mongoose.Schema({
+  key: { type: String, default: 'samiti_store', unique: true },
+  adminPin: String,
+  members: Array,
+  events: Array,
+  chandaList: Array,
+  expenseList: Array,
+  custodyList: Array,
+  soundInventory: Array,
+  soundRentals: Array,
+  soundFundTxns: Array,
+}, { timestamps: true });
+
+const AppDataModel = mongoose.model('AppData', DataSchema);
+
+if (MONGO_URI) {
+  mongoose.connect(MONGO_URI)
+    .then(() => {
+      isMongoConnected = true;
+      console.log('🍃 Connected to MongoDB Atlas successfully!');
+    })
+    .catch((err) => {
+      console.error('❌ MongoDB Connection Error:', err.message);
+      console.log('⚠️ Falling back to local file storage (db.json)');
+    });
+}
+
+// Helper function to read database (Async)
+const readDB = async () => {
+  if (isMongoConnected) {
+    try {
+      let doc = await AppDataModel.findOne({ key: 'samiti_store' }).lean();
+      if (!doc) {
+        // Seed initial data from local db.json if database is empty
+        const initial = fs.existsSync(DB_FILE) ? fs.readJsonSync(DB_FILE) : {};
+        doc = await AppDataModel.create({ key: 'samiti_store', ...initial });
+      }
+      return doc;
+    } catch (err) {
+      console.error('Error reading MongoDB:', err);
+    }
+  }
+
+  // Fallback to local JSON file
   try {
     if (fs.existsSync(DB_FILE)) {
       return fs.readJsonSync(DB_FILE);
@@ -26,8 +74,23 @@ const readDB = () => {
   return {};
 };
 
-// Helper function to write database
-const writeDB = (data) => {
+// Helper function to write database (Async)
+const writeDB = async (data) => {
+  if (isMongoConnected) {
+    try {
+      await AppDataModel.findOneAndUpdate(
+        { key: 'samiti_store' },
+        { $set: data },
+        { upsert: true, new: true }
+      );
+      return true;
+    } catch (err) {
+      console.error('Error writing to MongoDB:', err);
+      return false;
+    }
+  }
+
+  // Fallback to local JSON file
   try {
     fs.writeJsonSync(DB_FILE, data, { spaces: 2 });
     return true;
@@ -39,22 +102,26 @@ const writeDB = (data) => {
 
 // Health Check API
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Gram Samiti API Server is running 🚀' });
+  res.json({
+    status: 'ok',
+    message: 'Gram Samiti API Server is running 🚀',
+    storageMode: isMongoConnected ? 'MongoDB Cloud' : 'Local File (db.json)'
+  });
 });
 
 // Get Full State Data
-app.get('/api/data', (req, res) => {
-  const dbData = readDB();
+app.get('/api/data', async (req, res) => {
+  const dbData = await readDB();
   res.json(dbData);
 });
 
 // Full Sync endpoint
-app.post('/api/sync', (req, res) => {
+app.post('/api/sync', async (req, res) => {
   const fullData = req.body;
   if (!fullData) {
     return res.status(400).json({ error: 'No data provided' });
   }
-  const success = writeDB(fullData);
+  const success = await writeDB(fullData);
   if (success) {
     res.json({ success: true, message: 'डेटा सफलतापूर्वक बैकएंड सर्वर पर सेव हो गया!' });
   } else {
@@ -63,9 +130,9 @@ app.post('/api/sync', (req, res) => {
 });
 
 // Admin Verify PIN
-app.post('/api/admin/verify-pin', (req, res) => {
+app.post('/api/admin/verify-pin', async (req, res) => {
   const { pin } = req.body;
-  const db = readDB();
+  const db = await readDB();
   if (pin === db.adminPin) {
     res.json({ success: true, message: 'PIN सही है' });
   } else {
@@ -74,9 +141,9 @@ app.post('/api/admin/verify-pin', (req, res) => {
 });
 
 // Admin Change PIN
-app.post('/api/admin/change-pin', (req, res) => {
+app.post('/api/admin/change-pin', async (req, res) => {
   const { oldPin, newPin } = req.body;
-  const db = readDB();
+  const db = await readDB();
   if (oldPin !== db.adminPin) {
     return res.status(400).json({ success: false, message: 'पुराना पासवर्ड गलत है!' });
   }
@@ -84,23 +151,24 @@ app.post('/api/admin/change-pin', (req, res) => {
     return res.status(400).json({ success: false, message: 'नया पासवर्ड कम से कम 4 अंकों का होना चाहिए!' });
   }
   db.adminPin = newPin;
-  writeDB(db);
+  await writeDB(db);
   res.json({ success: true, message: 'पासवर्ड सफलतापूर्वक बदल दिया गया है!' });
 });
 
 // Generic Module Handlers
-app.get('/api/events', (req, res) => res.json(readDB().events || []));
-app.get('/api/chanda', (req, res) => res.json(readDB().chandaList || []));
-app.get('/api/expenses', (req, res) => res.json(readDB().expenseList || []));
-app.get('/api/custody', (req, res) => res.json(readDB().custodyList || []));
-app.get('/api/sound-equipment', (req, res) => res.json(readDB().soundInventory || []));
-app.get('/api/sound-rentals', (req, res) => res.json(readDB().soundRentals || []));
-app.get('/api/sound-fund', (req, res) => res.json(readDB().soundFundTxns || []));
-app.get('/api/members', (req, res) => res.json(readDB().members || []));
+app.get('/api/events', async (req, res) => res.json((await readDB()).events || []));
+app.get('/api/chanda', async (req, res) => res.json((await readDB()).chandaList || []));
+app.get('/api/expenses', async (req, res) => res.json((await readDB()).expenseList || []));
+app.get('/api/custody', async (req, res) => res.json((await readDB()).custodyList || []));
+app.get('/api/sound-equipment', async (req, res) => res.json((await readDB()).soundInventory || []));
+app.get('/api/sound-rentals', async (req, res) => res.json((await readDB()).soundRentals || []));
+app.get('/api/sound-fund', async (req, res) => res.json((await readDB()).soundFundTxns || []));
+app.get('/api/members', async (req, res) => res.json((await readDB()).members || []));
 
 app.listen(PORT, () => {
   console.log(`===================================================`);
   console.log(`🚩 Gram Samiti Backend Server running on port ${PORT}`);
-  console.log(`🌐 API Base URL: http://localhost:${PORT}/api/data`);
+  console.log(`🌐 Storage Mode: ${isMongoConnected ? 'MongoDB Cloud' : 'Local File (db.json)'}`);
   console.log(`===================================================`);
 });
+

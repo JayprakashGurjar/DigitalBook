@@ -47,6 +47,25 @@ function useLocalStorage(key, defaultValue) {
   return [value, setValue];
 }
 
+// Helper function to merge two arrays by unique item 'id' without losing data
+function mergeListsById(localList = [], serverList = []) {
+  if (!Array.isArray(localList)) localList = [];
+  if (!Array.isArray(serverList)) serverList = [];
+
+  const map = new Map();
+  // Add server items first
+  serverList.forEach((item) => {
+    if (item && item.id) map.set(item.id, item);
+  });
+  // Keep local items if not yet on server
+  localList.forEach((item) => {
+    if (item && item.id && !map.has(item.id)) {
+      map.set(item.id, item);
+    }
+  });
+  return Array.from(map.values());
+}
+
 export const AppProvider = ({ children }) => {
   // Admin PIN & Lock State
   const [adminPin, setAdminPin] = useLocalStorage('samiti_admin_pin', INITIAL_PIN);
@@ -80,15 +99,45 @@ export const AppProvider = ({ children }) => {
         const res = await fetch(`${API_BASE_URL}/data`);
         if (res.ok) {
           const data = await res.json();
-          if (data.events) setEvents(data.events);
-          if (data.chandaList) setChandaList(data.chandaList);
-          if (data.expenseList) setExpenseList(data.expenseList);
-          if (data.custodyList) setCustodyList(data.custodyList);
-          if (data.soundInventory) setSoundInventory(data.soundInventory);
-          if (data.soundRentals) setSoundRentals(data.soundRentals);
-          if (data.soundFundTxns) setSoundFundTxns(data.soundFundTxns);
-          if (data.members) setMembers(data.members);
+
+          const mergedEvents = mergeListsById(events, data.events);
+          const mergedChanda = mergeListsById(chandaList, data.chandaList);
+          const mergedExpenses = mergeListsById(expenseList, data.expenseList);
+          const mergedCustody = mergeListsById(custodyList, data.custodyList);
+          const mergedSoundInv = mergeListsById(soundInventory, data.soundInventory);
+          const mergedSoundRentals = mergeListsById(soundRentals, data.soundRentals);
+          const mergedSoundFund = mergeListsById(soundFundTxns, data.soundFundTxns);
+          const mergedMembers = mergeListsById(members, data.members);
+
+          setEvents(mergedEvents);
+          setChandaList(mergedChanda);
+          setExpenseList(mergedExpenses);
+          setCustodyList(mergedCustody);
+          setSoundInventory(mergedSoundInv);
+          setSoundRentals(mergedSoundRentals);
+          setSoundFundTxns(mergedSoundFund);
+          setMembers(mergedMembers);
+
           if (data.adminPin) setAdminPin(data.adminPin);
+
+          // If local browser had extra items missing on server, push combined data back to server
+          const localHasNewItems =
+            mergedEvents.length > (data.events?.length || 0) ||
+            mergedChanda.length > (data.chandaList?.length || 0) ||
+            mergedExpenses.length > (data.expenseList?.length || 0);
+
+          if (localHasNewItems) {
+            syncToBackend({
+              events: mergedEvents,
+              chandaList: mergedChanda,
+              expenseList: mergedExpenses,
+              custodyList: mergedCustody,
+              soundInventory: mergedSoundInv,
+              soundRentals: mergedSoundRentals,
+              soundFundTxns: mergedSoundFund,
+              members: mergedMembers,
+            });
+          }
         }
       } catch (err) {
         // Backend server offline, fallback to LocalStorage seamlessly

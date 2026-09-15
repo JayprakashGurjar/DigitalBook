@@ -383,6 +383,7 @@ const LedgerTable = () => {
                     <th>खर्च श्रेणी</th>
                     <th>विवरण (Title)</th>
                     <th>राशि (₹)</th>
+                    <th>भुगतानकर्ता (पैसे किसके पास से गए)</th>
                     <th>प्राप्तकर्ता (Paid To)</th>
                     <th>दिनांक</th>
                     <th>रिमार्क</th>
@@ -400,6 +401,13 @@ const LedgerTable = () => {
                       <td className="font-semibold">{ex.title}</td>
                       <td className="amount-cell text-red">
                         {formatCurrency(ex.amount)}
+                      </td>
+                      <td>
+                        {ex.paidByMemberName ? (
+                          <span className="badge badge-member">👤 {ex.paidByMemberName}</span>
+                        ) : (
+                          <span className="text-sub">सामान्य कोश</span>
+                        )}
                       </td>
                       <td>{ex.paidTo || '-'}</td>
                       <td>{formatDate(ex.date)}</td>

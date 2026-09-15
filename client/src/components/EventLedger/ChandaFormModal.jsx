@@ -10,6 +10,7 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
   const [amount, setAmount] = useState(initialData?.amount || '');
   const [paymentMode, setPaymentMode] = useState(initialData?.paymentMode || 'Cash');
   const [paymentStatus, setPaymentStatus] = useState(initialData?.paymentStatus || 'paid'); // paid | pledged
+  const [collectedByMemberName, setCollectedByMemberName] = useState(initialData?.collectedByMemberName || '');
   const [phone, setPhone] = useState(initialData?.phone || '');
   const [receiptNo, setReceiptNo] = useState(initialData?.receiptNo || '');
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
@@ -38,6 +39,7 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
         amount: Number(amount),
         paymentMode,
         paymentStatus,
+        collectedByMemberName,
         phone,
         receiptNo,
         date,
@@ -51,6 +53,7 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
         amount: Number(amount),
         paymentMode,
         paymentStatus,
+        collectedByMemberName,
         phone,
         receiptNo,
         date,
@@ -187,6 +190,22 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
                 <option value="Bank">🏦 बैंक ट्रांसफर</option>
               </select>
             </div>
+          </div>
+
+          <div className="form-group">
+            <label>चंदा प्राप्तकर्ता सदस्य (किस सदस्य की सुपुर्दगी में जमा हुआ?)</label>
+            <select
+              value={collectedByMemberName}
+              onChange={(e) => setCollectedByMemberName(e.target.value)}
+              className="dropdown-select"
+            >
+              <option value="">-- सामान्य कोष / अनकैश्ड --</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.name}>
+                  👤 {m.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="form-row-2">

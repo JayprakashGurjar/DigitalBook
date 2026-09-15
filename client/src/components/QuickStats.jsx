@@ -52,6 +52,54 @@ const QuickStats = () => {
 
   const surplusDeficit = paidChandaTotal - grandExpense;
 
+  // Compute Member-wise Cash Custody Breakdown for current event
+  const memberCashMap = {};
+
+  const eventCustody = currentEvent
+    ? custodyList.filter((cu) => cu.eventId === currentEvent.id)
+    : [];
+
+  // 1. Add assigned custody entries
+  eventCustody.forEach((cu) => {
+    if (!cu.holderName) return;
+    const name = cu.holderName.trim();
+    if (!memberCashMap[name]) {
+      memberCashMap[name] = { name, assigned: 0, spent: 0 };
+    }
+    if (cu.type === 'surplus_custody') {
+      memberCashMap[name].assigned += Number(cu.amount || 0);
+    } else {
+      memberCashMap[name].assigned -= Number(cu.amount || 0);
+    }
+  });
+
+  // 2. Add chanda collected directly by member
+  eventChanda.forEach((c) => {
+    if (c.collectedByMemberName && c.paymentStatus !== 'pledged') {
+      const name = c.collectedByMemberName.trim();
+      if (!memberCashMap[name]) {
+        memberCashMap[name] = { name, assigned: 0, spent: 0 };
+      }
+      memberCashMap[name].assigned += Number(c.amount || 0);
+    }
+  });
+
+  // 3. Subtract expenses paid out of member custody
+  eventExpenses.forEach((e) => {
+    if (e.paidByMemberName) {
+      const name = e.paidByMemberName.trim();
+      if (!memberCashMap[name]) {
+        memberCashMap[name] = { name, assigned: 0, spent: 0 };
+      }
+      memberCashMap[name].spent += Number(e.amount || 0);
+    }
+  });
+
+  const memberCashList = Object.values(memberCashMap).map((item) => ({
+    ...item,
+    remaining: item.assigned - item.spent,
+  }));
+
   // Active Sound Rentals Summary
   const activeRentals = soundRentals.filter((r) => r.status === 'active');
   const soundTotalDues = activeRentals.reduce(
@@ -62,75 +110,115 @@ const QuickStats = () => {
   return (
     <div className="quick-stats-container">
       {activeTab === 'ledger' && currentEvent && (
-        <div className="stats-grid">
-          {/* Total Chanda Card */}
-          <div className="stat-card green-glow">
-            <div className="stat-header">
-              <span className="stat-title">कुल जमा (प्राप्त) चंदा</span>
-              <div className="stat-icon-wrap green">
-                <TrendingUp size={20} />
+        <>
+          <div className="stats-grid">
+            {/* Total Chanda Card */}
+            <div className="stat-card green-glow">
+              <div className="stat-header">
+                <span className="stat-title">कुल जमा (प्राप्त) चंदा</span>
+                <div className="stat-icon-wrap green">
+                  <TrendingUp size={20} />
+                </div>
+              </div>
+              <div className="stat-value text-green">{formatCurrency(paidChandaTotal)}</div>
+              <div className="stat-sub">
+                <span>लिखवाया बकाया: <strong>{formatCurrency(pledgedChandaTotal)}</strong></span>
+                <span> | </span>
+                <span>कुल तय: {formatCurrency(grandChanda)}</span>
               </div>
             </div>
-            <div className="stat-value text-green">{formatCurrency(paidChandaTotal)}</div>
-            <div className="stat-sub">
-              <span>लिखवाया बकाया: <strong>{formatCurrency(pledgedChandaTotal)}</strong></span>
-              <span> | </span>
-              <span>कुल तय: {formatCurrency(grandChanda)}</span>
-            </div>
-          </div>
 
-          {/* Total Expenses Card */}
-          <div className="stat-card red-glow">
-            <div className="stat-header">
-              <span className="stat-title">कुल कार्यक्रम खर्च</span>
-              <div className="stat-icon-wrap red">
-                <TrendingDown size={20} />
+            {/* Total Expenses Card */}
+            <div className="stat-card red-glow">
+              <div className="stat-header">
+                <span className="stat-title">कुल कार्यक्रम खर्च</span>
+                <div className="stat-icon-wrap red">
+                  <TrendingDown size={20} />
+                </div>
+              </div>
+              <div className="stat-value text-red">{formatCurrency(grandExpense)}</div>
+              <div className="stat-sub">
+                <span>कुल {eventExpenses.length} मदों में खर्च</span>
               </div>
             </div>
-            <div className="stat-value text-red">{formatCurrency(grandExpense)}</div>
-            <div className="stat-sub">
-              <span>कुल {eventExpenses.length} मदों में खर्च</span>
-            </div>
-          </div>
 
-          {/* Surplus / Deficit Balance Card */}
-          <div
-            className={`stat-card ${
-              surplusDeficit >= 0 ? 'saffron-glow' : 'warning-glow'
-            }`}
-          >
-            <div className="stat-header">
-              <span className="stat-title">
-                {surplusDeficit >= 0 ? 'बची हुई शेष राशि (Surplus)' : 'अतिरिक्त खर्च घाटा'}
-              </span>
-              <div
-                className={`stat-icon-wrap ${
-                  surplusDeficit >= 0 ? 'saffron' : 'warning'
-                }`}
-              >
-                <Wallet size={20} />
-              </div>
-            </div>
+            {/* Surplus / Deficit Balance Card */}
             <div
-              className={`stat-value ${
-                surplusDeficit >= 0 ? 'text-saffron' : 'text-danger'
+              className={`stat-card ${
+                surplusDeficit >= 0 ? 'saffron-glow' : 'warning-glow'
               }`}
             >
-              {formatCurrency(Math.abs(surplusDeficit))}
-            </div>
-            <div className="stat-sub">
-              {surplusDeficit >= 0 ? (
-                <span className="flex-align">
-                  <ArrowUpRight size={14} /> अगले कार्य हेतु सुरक्षित
+              <div className="stat-header">
+                <span className="stat-title">
+                  {surplusDeficit >= 0 ? 'बची हुई शेष राशि (Surplus)' : 'अतिरिक्त खर्च घाटा'}
                 </span>
-              ) : (
-                <span className="flex-align text-danger">
-                  <ArrowDownRight size={14} /> अतिरिक्त भुगतान देय
-                </span>
-              )}
+                <div
+                  className={`stat-icon-wrap ${
+                    surplusDeficit >= 0 ? 'saffron' : 'warning'
+                  }`}
+                >
+                  <Wallet size={20} />
+                </div>
+              </div>
+              <div
+                className={`stat-value ${
+                  surplusDeficit >= 0 ? 'text-saffron' : 'text-danger'
+                }`}
+              >
+                {formatCurrency(Math.abs(surplusDeficit))}
+              </div>
+              <div className="stat-sub">
+                {surplusDeficit >= 0 ? (
+                  <span className="flex-align">
+                    <ArrowUpRight size={14} /> अगले कार्य हेतु सुरक्षित
+                  </span>
+                ) : (
+                  <span className="flex-align text-danger">
+                    <ArrowDownRight size={14} /> अतिरिक्त भुगतान देय
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* Member Cash Custody & Balance Breakdown Card */}
+          {memberCashList.length > 0 && (
+            <div className="member-cash-summary-card">
+              <div className="member-cash-header">
+                <div className="flex-align">
+                  <Wallet size={18} className="icon-gold" />
+                  <h3>💼 समिति सदस्यों के पास जमा एवं शेष कैश (Member Cash Custody)</h3>
+                </div>
+                <span className="sub-tag font-bold text-saffron">
+                  {memberCashList.length} सदस्यों के पास फंड
+                </span>
+              </div>
+
+              <div className="member-cash-grid">
+                {memberCashList.map((m, idx) => (
+                  <div key={idx} className="member-cash-chip">
+                    <div className="member-name-row">
+                      <span className="font-bold">👤 {m.name}</span>
+                      <span
+                        className={`remaining-badge ${
+                          m.remaining >= 0 ? 'text-green font-bold' : 'text-danger font-bold'
+                        }`}
+                      >
+                        {m.remaining >= 0 ? 'शेष: ' : 'अतिरिक्त: '}
+                        {formatCurrency(Math.abs(m.remaining))}
+                      </span>
+                    </div>
+                    <div className="member-math-row">
+                      <span>कुल सुपुर्दगी: {formatCurrency(m.assigned)}</span>
+                      <span> | </span>
+                      <span>खर्च हुआ: {formatCurrency(m.spent)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {activeTab === 'sound' && (

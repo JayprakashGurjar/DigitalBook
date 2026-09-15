@@ -4,12 +4,13 @@ import { EXPENSE_CATEGORIES } from '../../utils/formatters';
 import { MinusCircle, X, IndianRupee } from 'lucide-react';
 
 const ExpenseFormModal = ({ onClose, initialData = null }) => {
-  const { addExpense, updateExpense, currentEvent } = useApp();
+  const { addExpense, updateExpense, currentEvent, members } = useApp();
 
   const [category, setCategory] = useState(initialData?.category || 'Pooja/Samagri');
   const [title, setTitle] = useState(initialData?.title || '');
   const [amount, setAmount] = useState(initialData?.amount || '');
   const [paidTo, setPaidTo] = useState(initialData?.paidTo || '');
+  const [paidByMemberName, setPaidByMemberName] = useState(initialData?.paidByMemberName || '');
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState(initialData?.note || '');
 
@@ -23,6 +24,7 @@ const ExpenseFormModal = ({ onClose, initialData = null }) => {
         title,
         amount: Number(amount),
         paidTo,
+        paidByMemberName,
         date,
         note,
       });
@@ -33,6 +35,7 @@ const ExpenseFormModal = ({ onClose, initialData = null }) => {
         title,
         amount: Number(amount),
         paidTo,
+        paidByMemberName,
         date,
         note,
       });
@@ -98,14 +101,30 @@ const ExpenseFormModal = ({ onClose, initialData = null }) => {
             </div>
 
             <div className="form-group">
-              <label>भुगतान प्राप्तकर्ता (Paid To)</label>
-              <input
-                type="text"
-                placeholder="उदा. श्यामलाल मूर्तिकार, गुप्ता स्टोर"
-                value={paidTo}
-                onChange={(e) => setPaidTo(e.target.value)}
-              />
+              <label>भुगतानकर्ता सदस्य (पैसे किसके पास से दिए गए?)</label>
+              <select
+                value={paidByMemberName}
+                onChange={(e) => setPaidByMemberName(e.target.value)}
+                className="dropdown-select"
+              >
+                <option value="">-- सामान्य फंड / अनकैश्ड --</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.name}>
+                    👤 {m.name}
+                  </option>
+                ))}
+              </select>
             </div>
+          </div>
+
+          <div className="form-group">
+            <label>भुगतान प्राप्तकर्ता व्यापारी/दुकानदार (Paid To)</label>
+            <input
+              type="text"
+              placeholder="उदा. श्यामलाल मूर्तिकार, गुप्ता स्टोर"
+              value={paidTo}
+              onChange={(e) => setPaidTo(e.target.value)}
+            />
           </div>
 
           <div className="form-row-2">

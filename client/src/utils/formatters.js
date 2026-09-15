@@ -73,10 +73,44 @@ export const generateEventWhatsAppSummary = (event, chandaList, expenseList, cus
     text += `⚠️ *अतिरिक्त खर्च (Deficit):* ${formatCurrency(Math.abs(netBalance))}\n`;
   }
 
-  if (eventCustody.length > 0) {
-    text += `\n💼 *जमा राशि/हवाले जानकारी:*\n`;
-    eventCustody.forEach((cu) => {
-      text += `• ${cu.holderName}: ${formatCurrency(cu.amount)} (${cu.note || 'सुरक्षित जमा'})\n`;
+  // Compute Member Cash Custody Breakdown
+  const memberCashMap = {};
+
+  eventCustody.forEach((cu) => {
+    if (!cu.holderName) return;
+    const name = cu.holderName.trim();
+    if (!memberCashMap[name]) memberCashMap[name] = { assigned: 0, spent: 0 };
+    if (cu.type === 'surplus_custody') memberCashMap[name].assigned += Number(cu.amount || 0);
+    else memberCashMap[name].assigned -= Number(cu.amount || 0);
+  });
+
+  eventChanda.forEach((c) => {
+    if (c.collectedByMemberName && c.paymentStatus !== 'pledged') {
+      const name = c.collectedByMemberName.trim();
+      if (!memberCashMap[name]) memberCashMap[name] = { assigned: 0, spent: 0 };
+      memberCashMap[name].assigned += Number(c.amount || 0);
+    }
+  });
+
+  eventExpenses.forEach((e) => {
+    if (e.paidByMemberName) {
+      const name = e.paidByMemberName.trim();
+      if (!memberCashMap[name]) memberCashMap[name] = { assigned: 0, spent: 0 };
+      memberCashMap[name].spent += Number(e.amount || 0);
+    }
+  });
+
+  const memberCashEntries = Object.entries(memberCashMap).map(([name, val]) => ({
+    name,
+    assigned: val.assigned,
+    spent: val.spent,
+    remaining: val.assigned - val.spent,
+  }));
+
+  if (memberCashEntries.length > 0) {
+    text += `\n💼 *सदस्यों के पास जमा एवं शेष कैश:*\n`;
+    memberCashEntries.forEach((m) => {
+      text += `• *${m.name}:* शेष ${formatCurrency(m.remaining)} (जमा: ${formatCurrency(m.assigned)}, खर्च: ${formatCurrency(m.spent)})\n`;
     });
   }
 

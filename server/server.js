@@ -18,7 +18,6 @@ app.use(express.json({ limit: '10mb' }));
 
 // MongoDB setup
 const MONGO_URI = process.env.MONGO_URI;
-let isMongoConnected = false;
 
 const DataSchema = new mongoose.Schema({
   key: { type: String, default: 'samiti_store', unique: true },
@@ -35,31 +34,24 @@ const DataSchema = new mongoose.Schema({
 
 const AppDataModel = mongoose.model('AppData', DataSchema);
 
-if (MONGO_URI) {
-  mongoose.connect(MONGO_URI)
-    .then(() => {
-      isMongoConnected = true;
-      console.log('🍃 Connected to MongoDB Atlas successfully!');
-    })
-    .catch((err) => {
-      console.error('❌ MongoDB Connection Error:', err.message);
-      console.log('⚠️ Falling back to local file storage (db.json)');
-    });
-}
+const isConnected = () => mongoose.connection.readyState === 1;
 
 // Helper function to read database (Async)
 const readDB = async () => {
-  if (isMongoConnected) {
+  if (isConnected()) {
     try {
       let doc = await AppDataModel.findOne({ key: 'samiti_store' }).lean();
       if (!doc) {
         // Seed initial data from local db.json if database is empty
         const initial = fs.existsSync(DB_FILE) ? fs.readJsonSync(DB_FILE) : {};
         doc = await AppDataModel.create({ key: 'samiti_store', ...initial });
+        doc = doc.toObject();
       }
+      delete doc._id;
+      delete doc.__v;
       return doc;
     } catch (err) {
-      console.error('Error reading MongoDB:', err);
+      console.error('❌ Error reading MongoDB:', err.message);
     }
   }
 
@@ -76,16 +68,23 @@ const readDB = async () => {
 
 // Helper function to write database (Async)
 const writeDB = async (data) => {
-  if (isMongoConnected) {
+  if (isConnected()) {
     try {
+      // Clean payload: strip out Mongo immutable fields (_id, __v)
+      const payload = { ...data };
+      delete payload._id;
+      delete payload.__v;
+      delete payload.createdAt;
+      delete payload.updatedAt;
+
       await AppDataModel.findOneAndUpdate(
         { key: 'samiti_store' },
-        { $set: data },
+        { $set: payload },
         { upsert: true, new: true }
       );
       return true;
     } catch (err) {
-      console.error('Error writing to MongoDB:', err);
+      console.error('❌ Error writing to MongoDB:', err.message);
       return false;
     }
   }
@@ -105,7 +104,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     message: 'Gram Samiti API Server is running 🚀',
-    storageMode: isMongoConnected ? 'MongoDB Cloud' : 'Local File (db.json)'
+    storageMode: isConnected() ? 'MongoDB Cloud' : 'Local File (db.json)'
   });
 });
 
@@ -165,10 +164,26 @@ app.get('/api/sound-rentals', async (req, res) => res.json((await readDB()).soun
 app.get('/api/sound-fund', async (req, res) => res.json((await readDB()).soundFundTxns || []));
 app.get('/api/members', async (req, res) => res.json((await readDB()).members || []));
 
-app.listen(PORT, () => {
-  console.log(`===================================================`);
-  console.log(`🚩 Gram Samiti Backend Server running on port ${PORT}`);
-  console.log(`🌐 Storage Mode: ${isMongoConnected ? 'MongoDB Cloud' : 'Local File (db.json)'}`);
-  console.log(`===================================================`);
-});
+// Connect DB & Start Express
+const start = async () => {
+  if (MONGO_URI) {
+    try {
+      await mongoose.connect(MONGO_URI);
+      console.log('🍃 Connected to MongoDB Atlas successfully!');
+    } catch (err) {
+      console.error('❌ MongoDB Connection Error:', err.message);
+      console.log('⚠️ Falling back to local file storage (db.json)');
+    }
+  }
+
+  app.listen(PORT, () => {
+    console.log(`===================================================`);
+    console.log(`🚩 Gram Samiti Backend Server running on port ${PORT}`);
+    console.log(`🌐 Storage Mode: ${isConnected() ? 'MongoDB Cloud' : 'Local File (db.json)'}`);
+    console.log(`===================================================`);
+  });
+};
+
+start();
+
 

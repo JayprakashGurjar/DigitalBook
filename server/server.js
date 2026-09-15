@@ -22,15 +22,15 @@ const MONGO_URI = process.env.MONGO_URI;
 const DataSchema = new mongoose.Schema({
   key: { type: String, default: 'samiti_store', unique: true },
   adminPin: String,
-  members: Array,
-  events: Array,
-  chandaList: Array,
-  expenseList: Array,
-  custodyList: Array,
-  soundInventory: Array,
-  soundRentals: Array,
-  soundFundTxns: Array,
-}, { timestamps: true });
+  members: mongoose.Schema.Types.Mixed,
+  events: mongoose.Schema.Types.Mixed,
+  chandaList: mongoose.Schema.Types.Mixed,
+  expenseList: mongoose.Schema.Types.Mixed,
+  custodyList: mongoose.Schema.Types.Mixed,
+  soundInventory: mongoose.Schema.Types.Mixed,
+  soundRentals: mongoose.Schema.Types.Mixed,
+  soundFundTxns: mongoose.Schema.Types.Mixed,
+}, { timestamps: true, strict: false });
 
 const AppDataModel = mongoose.model('AppData', DataSchema);
 
@@ -43,6 +43,7 @@ const readDB = async () => {
       let doc = await AppDataModel.findOne({ key: 'samiti_store' }).lean();
       if (!doc) {
         // Seed initial data from local db.json if database is empty
+        fs.ensureDirSync(path.dirname(DB_FILE));
         const initial = fs.existsSync(DB_FILE) ? fs.readJsonSync(DB_FILE) : {};
         doc = await AppDataModel.create({ key: 'samiti_store', ...initial });
         doc = doc.toObject();
@@ -57,6 +58,7 @@ const readDB = async () => {
 
   // Fallback to local JSON file
   try {
+    fs.ensureDirSync(path.dirname(DB_FILE));
     if (fs.existsSync(DB_FILE)) {
       return fs.readJsonSync(DB_FILE);
     }
@@ -82,20 +84,21 @@ const writeDB = async (data) => {
         { $set: payload },
         { upsert: true, new: true }
       );
-      return true;
+      return { success: true };
     } catch (err) {
       console.error('❌ Error writing to MongoDB:', err.message);
-      return false;
+      return { success: false, error: err.message };
     }
   }
 
   // Fallback to local JSON file
   try {
+    fs.ensureDirSync(path.dirname(DB_FILE));
     fs.writeJsonSync(DB_FILE, data, { spaces: 2 });
-    return true;
+    return { success: true };
   } catch (err) {
     console.error('Error writing db.json:', err);
-    return false;
+    return { success: false, error: err.message };
   }
 };
 
@@ -117,14 +120,15 @@ app.get('/api/data', async (req, res) => {
 // Full Sync endpoint
 app.post('/api/sync', async (req, res) => {
   const fullData = req.body;
-  if (!fullData) {
-    return res.status(400).json({ error: 'No data provided' });
+  if (!fullData || Object.keys(fullData).length === 0) {
+    return res.status(400).json({ success: false, error: 'No data provided' });
   }
-  const success = await writeDB(fullData);
-  if (success) {
+  const result = await writeDB(fullData);
+  if (result.success) {
     res.json({ success: true, message: 'डेटा सफलतापूर्वक बैकएंड सर्वर पर सेव हो गया!' });
   } else {
-    res.status(500).json({ success: false, message: 'सर्वर पर सेव करने में त्रुटि' });
+    console.error('❌ Sync Failed:', result.error);
+    res.status(500).json({ success: false, message: 'सर्वर पर सेव करने में त्रुटि', error: result.error });
   }
 });
 

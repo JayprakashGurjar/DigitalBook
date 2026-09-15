@@ -35,13 +35,31 @@ const QuickStats = () => {
     ? expenseList.filter((e) => e.eventId === currentEvent.id)
     : [];
 
-  const paidChandaTotal = eventChanda
-    .filter((c) => c.paymentStatus !== 'pledged')
-    .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const paidChandaTotal = eventChanda.reduce(
+    (sum, c) =>
+      sum +
+      Number(
+        c.paidAmount !== undefined
+          ? c.paidAmount
+          : c.paymentStatus !== 'pledged'
+          ? c.amount
+          : 0
+      ),
+    0
+  );
 
-  const pledgedChandaTotal = eventChanda
-    .filter((c) => c.paymentStatus === 'pledged')
-    .reduce((sum, c) => sum + Number(c.amount || 0), 0);
+  const pledgedChandaTotal = eventChanda.reduce(
+    (sum, c) =>
+      sum +
+      Number(
+        c.dueAmount !== undefined
+          ? c.dueAmount
+          : c.paymentStatus === 'pledged'
+          ? c.amount
+          : 0
+      ),
+    0
+  );
 
   const grandChanda = paidChandaTotal + pledgedChandaTotal;
 
@@ -75,12 +93,20 @@ const QuickStats = () => {
 
   // 2. Add chanda collected directly by member
   eventChanda.forEach((c) => {
-    if (c.collectedByMemberName && c.paymentStatus !== 'pledged') {
+    if (c.collectedByMemberName) {
       const name = c.collectedByMemberName.trim();
-      if (!memberCashMap[name]) {
-        memberCashMap[name] = { name, assigned: 0, spent: 0 };
+      const actualPaid =
+        c.paidAmount !== undefined
+          ? Number(c.paidAmount)
+          : c.paymentStatus !== 'pledged'
+          ? Number(c.amount || 0)
+          : 0;
+      if (actualPaid > 0) {
+        if (!memberCashMap[name]) {
+          memberCashMap[name] = { name, assigned: 0, spent: 0 };
+        }
+        memberCashMap[name].assigned += actualPaid;
       }
-      memberCashMap[name].assigned += Number(c.amount || 0);
     }
   });
 

@@ -8,8 +8,15 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
   const [donorName, setDonorName] = useState(initialData?.donorName || '');
   const [type, setType] = useState(initialData?.type || 'member'); // member | village
   const [amount, setAmount] = useState(initialData?.amount || '');
+  const [paidAmount, setPaidAmount] = useState(
+    initialData?.paidAmount !== undefined
+      ? initialData.paidAmount
+      : initialData?.paymentStatus === 'pledged'
+      ? 0
+      : initialData?.amount || ''
+  );
   const [paymentMode, setPaymentMode] = useState(initialData?.paymentMode || 'Cash');
-  const [paymentStatus, setPaymentStatus] = useState(initialData?.paymentStatus || 'paid'); // paid | pledged
+  const [paymentStatus, setPaymentStatus] = useState(initialData?.paymentStatus || 'paid'); // paid | partial | pledged
   const [collectedByMemberName, setCollectedByMemberName] = useState(initialData?.collectedByMemberName || '');
   const [phone, setPhone] = useState(initialData?.phone || '');
   const [receiptNo, setReceiptNo] = useState(initialData?.receiptNo || '');
@@ -28,15 +35,29 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
     }
   };
 
+  const handleStatusChange = (newStatus) => {
+    setPaymentStatus(newStatus);
+    if (newStatus === 'paid') {
+      setPaidAmount(amount);
+    } else if (newStatus === 'pledged') {
+      setPaidAmount(0);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!donorName.trim() || !amount) return;
+
+    let finalPaidAmount = Number(paidAmount);
+    if (paymentStatus === 'paid') finalPaidAmount = Number(amount);
+    if (paymentStatus === 'pledged') finalPaidAmount = 0;
 
     if (initialData) {
       updateChanda(initialData.id, {
         donorName,
         type,
         amount: Number(amount),
+        paidAmount: finalPaidAmount,
         paymentMode,
         paymentStatus,
         collectedByMemberName,
@@ -51,6 +72,7 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
         donorName,
         type,
         amount: Number(amount),
+        paidAmount: finalPaidAmount,
         paymentMode,
         paymentStatus,
         collectedByMemberName,
@@ -134,7 +156,7 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
             />
           </div>
 
-          {/* Payment Status: Paid vs Pledged */}
+          {/* Payment Status: Paid vs Partial vs Pledged */}
           <div className="form-group highlight-bg">
             <label>चंदा भुगतान स्थिति (Payment Status) *</label>
             <div className="radio-group-2">
@@ -144,9 +166,20 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
                   name="chandaStatus"
                   value="paid"
                   checked={paymentStatus === 'paid'}
-                  onChange={() => setPaymentStatus('paid')}
+                  onChange={() => handleStatusChange('paid')}
                 />
-                <span className="text-green font-semibold">✅ जमा प्राप्त हो गया (Paid)</span>
+                <span className="text-green font-semibold">✅ पूरा जमा हो गया (Paid)</span>
+              </label>
+
+              <label className={`radio-card ${paymentStatus === 'partial' ? 'selected' : ''}`}>
+                <input
+                  type="radio"
+                  name="chandaStatus"
+                  value="partial"
+                  checked={paymentStatus === 'partial'}
+                  onChange={() => handleStatusChange('partial')}
+                />
+                <span className="text-gold font-semibold">⏳ आंशिक जमा (कुछ दिया / कुछ बाकी)</span>
               </label>
 
               <label className={`radio-card ${paymentStatus === 'pledged' ? 'selected' : ''}`}>
@@ -155,28 +188,54 @@ const ChandaFormModal = ({ onClose, initialData = null }) => {
                   name="chandaStatus"
                   value="pledged"
                   checked={paymentStatus === 'pledged'}
-                  onChange={() => setPaymentStatus('pledged')}
+                  onChange={() => handleStatusChange('pledged')}
                 />
-                <span className="text-gold font-semibold">⏳ केवल लिखवाया है (बकाया / Due)</span>
+                <span className="text-danger font-semibold">🔴 केवल लिखवाया (पूरा बकाया)</span>
               </label>
             </div>
           </div>
 
           <div className="form-row-2">
             <div className="form-group">
-              <label>चंदा राशि (₹) *</label>
+              <label>कुल तय / लिखवाया चंदा राशि (₹) *</label>
               <div className="input-icon-wrap">
                 <IndianRupee size={16} className="input-icon" />
                 <input
                   type="number"
-                  placeholder="1100"
+                  placeholder="1500"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    if (paymentStatus === 'paid') setPaidAmount(e.target.value);
+                  }}
                   min="1"
                   required
                 />
               </div>
             </div>
+
+            {paymentStatus === 'partial' && (
+              <div className="form-group highlight-bg">
+                <label className="text-green font-bold">अभी प्राप्त (जमा की गई) राशि (₹) *</label>
+                <div className="input-icon-wrap">
+                  <IndianRupee size={16} className="input-icon" />
+                  <input
+                    type="number"
+                    placeholder="300"
+                    value={paidAmount}
+                    onChange={(e) => setPaidAmount(e.target.value)}
+                    min="0"
+                    max={amount || undefined}
+                    required
+                  />
+                </div>
+                {amount && (
+                  <span className="sub-tag text-danger font-bold style-margin-top">
+                    बकाया राशि: ₹{Math.max(0, Number(amount || 0) - Number(paidAmount || 0))}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="form-group">
               <label>भुगतान का माध्यम</label>

@@ -248,16 +248,55 @@ export const AppProvider = ({ children }) => {
     });
   };
 
+  // Helper to normalize Chanda amounts and statuses
+  const processChandaPayload = (rawPayload, existingItem = {}) => {
+    const totalAmount = Number(rawPayload.amount !== undefined ? rawPayload.amount : existingItem.amount) || 0;
+    let rawStatus = rawPayload.paymentStatus || existingItem.paymentStatus || 'paid';
+    
+    let paidAmount = 0;
+    if (rawStatus === 'paid') {
+      paidAmount = totalAmount;
+    } else if (rawStatus === 'pledged') {
+      paidAmount = 0;
+    } else {
+      paidAmount = Number(rawPayload.paidAmount !== undefined ? rawPayload.paidAmount : existingItem.paidAmount) || 0;
+    }
+
+    // Auto compute status
+    let finalStatus = 'paid';
+    if (paidAmount >= totalAmount) {
+      finalStatus = 'paid';
+      paidAmount = totalAmount;
+    } else if (paidAmount > 0) {
+      finalStatus = 'partial';
+    } else {
+      finalStatus = 'pledged';
+      paidAmount = 0;
+    }
+
+    const dueAmount = Math.max(0, totalAmount - paidAmount);
+
+    return {
+      ...existingItem,
+      ...rawPayload,
+      amount: totalAmount,
+      paidAmount,
+      dueAmount,
+      paymentStatus: finalStatus,
+    };
+  };
+
   // Chanda Handlers
   const addChanda = (newChanda) => {
     const receiptNo = `REC-${Math.floor(100 + Math.random() * 900)}`;
-    const chandaObj = {
+    const processed = processChandaPayload({
       ...newChanda,
-      id: `c-${Date.now()}`,
       receiptNo: newChanda.receiptNo || receiptNo,
       date: newChanda.date || new Date().toISOString().split('T')[0],
-      amount: Number(newChanda.amount) || 0,
-      paymentStatus: newChanda.paymentStatus || 'paid', // 'paid' (जमा) | 'pledged' (केवल लिखवाया)
+    });
+    const chandaObj = {
+      ...processed,
+      id: `c-${Date.now()}`,
     };
     const updated = [chandaObj, ...chandaList];
     setChandaList(updated);
@@ -266,8 +305,19 @@ export const AppProvider = ({ children }) => {
 
   const updateChanda = (id, updatedFields) => {
     const updated = chandaList.map((c) =>
-      c.id === id ? { ...c, ...updatedFields, amount: Number(updatedFields.amount || c.amount) } : c
+      c.id === id ? processChandaPayload(updatedFields, c) : c
     );
+    setChandaList(updated);
+    syncToBackend({ chandaList: updated });
+  };
+
+  const markChandaPaidInFull = (id) => {
+    const updated = chandaList.map((c) => {
+      if (c.id === id) {
+        return processChandaPayload({ paymentStatus: 'paid', paidAmount: c.amount }, c);
+      }
+      return c;
+    });
     setChandaList(updated);
     syncToBackend({ chandaList: updated });
   };
@@ -275,8 +325,8 @@ export const AppProvider = ({ children }) => {
   const toggleChandaStatus = (id) => {
     const updated = chandaList.map((c) => {
       if (c.id === id) {
-        const newStatus = c.paymentStatus === 'pledged' ? 'paid' : 'pledged';
-        return { ...c, paymentStatus: newStatus };
+        const newStatus = c.paymentStatus === 'paid' ? 'pledged' : 'paid';
+        return processChandaPayload({ paymentStatus: newStatus }, c);
       }
       return c;
     });
@@ -547,6 +597,7 @@ export const AppProvider = ({ children }) => {
         updateChanda,
         deleteChanda,
         toggleChandaStatus,
+        markChandaPaidInFull,
 
         // Expenses
         expenseList,

@@ -36,10 +36,11 @@ const LedgerTable = () => {
     deleteExpense,
     deleteCustody,
     toggleChandaStatus,
+    markChandaPaidInFull,
     isAdminUnlocked,
   } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState('all'); // all | paid | pledged | member | village | expenses | custody
+  const [activeSubTab, setActiveSubTab] = useState('all'); // all | paid | partial | pledged | member | village | expenses | custody
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals
@@ -70,7 +71,8 @@ const LedgerTable = () => {
 
   // Search & Subtab filter
   const filteredChanda = currentChanda.filter((c) => {
-    if (activeSubTab === 'paid' && c.paymentStatus === 'pledged') return false;
+    if (activeSubTab === 'paid' && c.paymentStatus !== 'paid') return false;
+    if (activeSubTab === 'partial' && c.paymentStatus !== 'partial') return false;
     if (activeSubTab === 'pledged' && c.paymentStatus !== 'pledged') return false;
     if (activeSubTab === 'member' && c.type !== 'member') return false;
     if (activeSubTab === 'village' && c.type !== 'village') return false;
@@ -114,14 +116,20 @@ const LedgerTable = () => {
 
   // WhatsApp Single Receipt Generator
   const shareSingleReceiptWhatsApp = (chanda) => {
-    const isPledged = chanda.paymentStatus === 'pledged';
+    const totalAmt = Number(chanda.amount || 0);
+    const paidAmt = chanda.paidAmount !== undefined ? Number(chanda.paidAmount) : (chanda.paymentStatus === 'pledged' ? 0 : totalAmt);
+    const dueAmt = Math.max(0, totalAmt - paidAmt);
+
     let text = `🚩 *नव गणेश एवं दुर्गा उत्सव समिति, गौला* 🚩\n`;
     text += `📜 *चंदा रसीद सं:* ${chanda.receiptNo}\n`;
     text += `------------------------------------\n`;
     text += `👤 *दानदाता:* ${chanda.donorName}\n`;
     text += `📋 *श्रेणी:* ${chanda.type === 'member' ? 'समिति पूर्ण सदस्य' : 'ग्रामीण जन'}\n`;
-    text += `💰 *राशि:* ${formatCurrency(chanda.amount)}\n`;
-    text += `📌 *भुगतान स्थिति:* ${isPledged ? '⏳ लिखवाया (बकाया)' : '✅ जमा प्राप्त (Paid)'}\n`;
+    text += `💰 *कुल लिखवाया चंदा:* ${formatCurrency(totalAmt)}\n`;
+    text += `✅ *प्राप्त जमा राशि:* ${formatCurrency(paidAmt)}\n`;
+    if (dueAmt > 0) {
+      text += `🔴 *शेष बकाया राशि:* ${formatCurrency(dueAmt)}\n`;
+    }
     text += `💵 *माध्यम:* ${chanda.paymentMode}\n`;
     text += `🗓️ *दिनांक:* ${formatDate(chanda.date)}\n`;
     text += `🎉 *कार्यक्रम:* ${currentEvent.name}\n`;
@@ -148,13 +156,19 @@ const LedgerTable = () => {
             className={`subtab-btn ${activeSubTab === 'paid' ? 'active' : ''}`}
             onClick={() => setActiveSubTab('paid')}
           >
-            ✅ जमा प्राप्त ({currentChanda.filter((c) => c.paymentStatus !== 'pledged').length})
+            ✅ पूर्ण जमा ({currentChanda.filter((c) => c.paymentStatus === 'paid').length})
+          </button>
+          <button
+            className={`subtab-btn ${activeSubTab === 'partial' ? 'active' : ''}`}
+            onClick={() => setActiveSubTab('partial')}
+          >
+            ⏳ आंशिक जमा ({currentChanda.filter((c) => c.paymentStatus === 'partial').length})
           </button>
           <button
             className={`subtab-btn ${activeSubTab === 'pledged' ? 'active' : ''}`}
             onClick={() => setActiveSubTab('pledged')}
           >
-            ⏳ केवल लिखवाया ({currentChanda.filter((c) => c.paymentStatus === 'pledged').length})
+            🔴 केवल लिखवाया ({currentChanda.filter((c) => c.paymentStatus === 'pledged').length})
           </button>
           <button
             className={`subtab-btn ${activeSubTab === 'member' ? 'active' : ''}`}
@@ -238,7 +252,7 @@ const LedgerTable = () => {
       </div>
 
       {/* Main Ledger Content Views */}
-      {['all', 'paid', 'pledged', 'member', 'village'].includes(activeSubTab) && (
+      {['all', 'paid', 'partial', 'pledged', 'member', 'village'].includes(activeSubTab) && (
         <div className="ledger-list-section">
           {filteredChanda.length === 0 ? (
             <div className="empty-card">
@@ -252,7 +266,7 @@ const LedgerTable = () => {
                     <th>रसीद सं.</th>
                     <th>दानदाता का नाम</th>
                     <th>श्रेणी</th>
-                    <th>राशि (₹)</th>
+                    <th>चंदा विवरण (कुल / जमा / बकाया)</th>
                     <th>भुगतान स्थिति</th>
                     <th>माध्यम</th>
                     <th>दिनांक</th>
@@ -262,7 +276,11 @@ const LedgerTable = () => {
                 </thead>
                 <tbody>
                   {filteredChanda.map((c) => {
-                    const isPledged = c.paymentStatus === 'pledged';
+                    const totalAmt = Number(c.amount || 0);
+                    const paidAmt = c.paidAmount !== undefined ? Number(c.paidAmount) : (c.paymentStatus === 'pledged' ? 0 : totalAmt);
+                    const dueAmt = Math.max(0, totalAmt - paidAmt);
+                    const isFullyPaid = c.paymentStatus === 'paid';
+
                     return (
                       <tr key={c.id}>
                         <td className="font-bold text-saffron">{c.receiptNo}</td>
@@ -281,21 +299,27 @@ const LedgerTable = () => {
                             {c.type === 'member' ? 'समिति सदस्य' : 'ग्रामीण जन'}
                           </span>
                         </td>
-                        <td
-                          className={`amount-cell ${
-                            isPledged ? 'text-gold' : 'text-green'
-                          }`}
-                        >
-                          {formatCurrency(c.amount)}
+                        <td className="amount-cell">
+                          <div className="flex-column">
+                            <span className="font-bold text-saffron">कुल: {formatCurrency(totalAmt)}</span>
+                            <span className="text-green text-sm">जमा: {formatCurrency(paidAmt)}</span>
+                            {dueAmt > 0 && (
+                              <span className="text-danger text-sm font-bold">बकाया: {formatCurrency(dueAmt)}</span>
+                            )}
+                          </div>
                         </td>
                         <td>
-                          <span
-                            className={`badge ${
-                              isPledged ? 'badge-gold' : 'badge-green'
-                            }`}
-                          >
-                            {isPledged ? '⏳ केवल लिखवाया (बकाया)' : '✅ जमा (Paid)'}
-                          </span>
+                          {c.paymentStatus === 'paid' && (
+                            <span className="badge badge-green">✅ पूर्ण जमा</span>
+                          )}
+                          {c.paymentStatus === 'partial' && (
+                            <span className="badge badge-gold">
+                              ⏳ आंशिक ({formatCurrency(paidAmt)} जमा | {formatCurrency(dueAmt)} बाकी)
+                            </span>
+                          )}
+                          {c.paymentStatus === 'pledged' && (
+                            <span className="badge badge-danger">🔴 लिखवाया (बकाया)</span>
+                          )}
                         </td>
                         <td>
                           <span className="pay-mode-pill">{c.paymentMode}</span>
@@ -312,20 +336,20 @@ const LedgerTable = () => {
                               <Share2 size={16} />
                             </button>
 
-                            <button
-                              className={`btn-status-toggle ${
-                                isPledged ? 'btn-active-toggle' : ''
-                              }`}
-                              onClick={() =>
-                                handleProtectedAction(
-                                  () => toggleChandaStatus(c.id),
-                                  'toggle_chanda'
-                                )
-                              }
-                              title="जमा / लिखवाया स्थिति बदलें"
-                            >
-                              {isPledged ? 'जमा दर्ज करें' : 'लिखवाया दर्ज करें'}
-                            </button>
+                            {!isFullyPaid && (
+                              <button
+                                className="btn-status-toggle btn-active-toggle"
+                                onClick={() =>
+                                  handleProtectedAction(
+                                    () => markChandaPaidInFull(c.id),
+                                    'mark_paid_full'
+                                  )
+                                }
+                                title="पूरा बकाया चुकता दर्ज करें"
+                              >
+                                ✅ पूरा जमा करें
+                              </button>
+                            )}
 
                             {isAdminUnlocked && (
                               <>
@@ -335,7 +359,7 @@ const LedgerTable = () => {
                                     setEditChandaData(c);
                                     setShowChandaModal(true);
                                   }}
-                                  title="बदलें"
+                                  title="बदलें / आंशिक जमा जोड़ें"
                                 >
                                   <Edit2 size={16} />
                                 </button>

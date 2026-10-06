@@ -1577,6 +1577,121 @@ body {
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+/* ===== Member Cash Summary Card Styling ===== */
+.member-cash-summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.15rem;
+  margin-top: 1.25rem;
+  box-shadow: var(--shadow-card);
+}
+
+.member-cash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1rem;
+}
+
+.member-cash-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.member-cash-title h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.member-cash-count-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary-saffron);
+  background: var(--saffron-light);
+  border: 1px solid rgba(255, 109, 0, 0.3);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.member-cash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.85rem;
+}
+
+.member-cash-chip {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.member-cash-chip:hover {
+  border-color: rgba(255, 179, 0, 0.4);
+  background: rgba(255, 255, 255, 0.02);
+  transform: translateY(-1px);
+}
+
+.member-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.member-name {
+  font-size: 0.92rem;
+  color: var(--text-main);
+}
+
+.remaining-badge {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.remaining-badge.badge-green {
+  background: var(--green-light);
+  color: var(--green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.remaining-badge.badge-red {
+  background: var(--red-light);
+  color: var(--red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.member-math-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  padding-top: 0.45rem;
+  margin-top: 0.1rem;
+}
+
+.math-divider {
+  color: var(--text-muted);
+}
+
 /* ===== Responsive Breakpoints ===== */
 @media (max-width: 640px) {
   .app-title { font-size: 1.1rem; }

@@ -13,6 +13,7 @@ import {
   Layers,
   ArrowUpRight,
   ArrowDownRight,
+  User,
 } from 'lucide-react';
 
 const QuickStats = () => {
@@ -211,11 +212,11 @@ const QuickStats = () => {
           {memberCashList.length > 0 && (
             <div className="member-cash-summary-card">
               <div className="member-cash-header">
-                <div className="flex-align">
-                  <Wallet size={18} className="icon-gold" />
-                  <h3>💼 समिति सदस्यों के पास जमा एवं शेष कैश (Member Cash Custody)</h3>
+                <div className="member-cash-title">
+                  <Wallet size={20} className="icon-gold" />
+                  <h3>समिति सदस्यों के पास जमा एवं शेष कैश (Member Cash Custody)</h3>
                 </div>
-                <span className="sub-tag font-bold text-saffron">
+                <span className="member-cash-count-badge">
                   {memberCashList.length} सदस्यों के पास फंड
                 </span>
               </div>
@@ -224,10 +225,13 @@ const QuickStats = () => {
                 {memberCashList.map((m, idx) => (
                   <div key={idx} className="member-cash-chip">
                     <div className="member-name-row">
-                      <span className="font-bold">👤 {m.name}</span>
+                      <span className="member-name flex-align">
+                        <User size={16} className="icon-gold" />
+                        <strong>{m.name}</strong>
+                      </span>
                       <span
                         className={`remaining-badge ${
-                          m.remaining >= 0 ? 'text-green font-bold' : 'text-danger font-bold'
+                          m.remaining >= 0 ? 'badge-green' : 'badge-red'
                         }`}
                       >
                         {m.remaining >= 0 ? 'शेष: ' : 'अतिरिक्त: '}
@@ -235,9 +239,9 @@ const QuickStats = () => {
                       </span>
                     </div>
                     <div className="member-math-row">
-                      <span>कुल सुपुर्दगी: {formatCurrency(m.assigned)}</span>
-                      <span> | </span>
-                      <span>खर्च हुआ: {formatCurrency(m.spent)}</span>
+                      <span>कुल सुपुर्दगी: <strong>{formatCurrency(m.assigned)}</strong></span>
+                      <span className="math-divider">•</span>
+                      <span>खर्च हुआ: <strong>{formatCurrency(m.spent)}</strong></span>
                     </div>
                   </div>
                 ))}

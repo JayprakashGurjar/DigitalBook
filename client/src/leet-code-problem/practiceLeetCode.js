@@ -99,16 +99,17 @@
 
 // problem number 66 leet code 
 
-// let array = [[1, 3], [2, 6], [8, 10], [15, 18]]
-// let result = []
-// const mergeArray = () => {
-//   for (let i = 0; i < array.length; i++) {
-//     for (let j = 0; j < array[i].length; j++) {
+let array = [[3, 1], [2, 6], [8, 10], [15, 18]]
+let result = []
+let curruntVelue = null
+const mergeArray = (array) => {
+    for (let i = 0; i < array.length; i++) {
+        let arraySort = array[i].sort();
+        for (let j = 0; j < arraySort.length; j++) {
+            console.log('array', arraySort[j])
+        }
+    }
+}
 
-//       console.log(array[i][j])
-//     }
-
-//   }
-// }
-
-// console.log('index', mergeArray(array))
+let mergeArrayData = mergeArray(array)
+console.log('index', mergeArrayData)
